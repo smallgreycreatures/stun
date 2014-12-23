@@ -1,10 +1,13 @@
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.util.logging.Logger;
 
 
@@ -40,6 +43,39 @@ public class Client extends Thread {
 		
 	}
 	
+	public InetSocketAddress getMappedAddress() throws IOException {
+		
+		synchronized(this) {
+			while (!done) {
+				try {
+					wait();
+				} catch (InterruptedException e) {
+					throw new IOException("Failed to retrieve mapped address: Interrupted");
+				}
+				
+			}
+		}
+		if (mappedAddress == null) {
+			StringBuilder sb = new StringBuilder();
+			sb.append("Failed to retrieve mapped address");
+			
+			if (socket != null) {
+				sb.append(" for " + socket.getLocalAddress() + ":" + socket.getLocalPort());
+			} else if (datagramSocket != null) {
+				sb.append(" for " + datagramSocket.getLocalAddress() + ":" + datagramSocket.getLocalPort());
+			}
+			logger.warning(sb.toString());
+			
+			logger.warning("IF YOU ARE BEHIND A FIREWALL OR NAT, ADDRESSES ARE NOT LIKELY TO BE CORRECT");
+			
+			throw new IOException(sb.toString());
+		}
+		
+		logger.fine("mapped address is " + mappedAddress);
+		
+		return mappedAddress;
+	}
+	
 	private synchronized void done() {
 		done = true;
 		notifyAll();
@@ -66,11 +102,31 @@ public class Client extends Thread {
 		}
 		
 		for (int i = 0; i < retries; i++) {
+			
+			//Prepare and send stun request
 			try {
 				logger.fine("Sending STUN request " + i);
 				sendRequest();
 			} catch (IOException e) {
 				logger.warning("Unable to send stun request: " + e.getMessage());
+			}
+			
+			try {
+				waitForResponse();
+			} catch (SocketTimeoutException e) {
+				logger.warning("No response to STUN request: " + e.getMessage());
+			} catch (IOException e) {
+				logger.warning("Recieve failed: " + e.getMessage());
+			}
+			
+			try {
+				if (datagramSocket != null) {
+					datagramSocket.setSoTimeout(socketTimeout);
+				} else {
+					socket.setSoTimeout(socketTimeout);
+				}
+			} catch (SocketException e) {
+				logger.warning("Unable to reset socket timeout: " + e.getMessage());
 			}
 		}
 	}
@@ -116,5 +172,53 @@ public class Client extends Thread {
 		buffer[26] = (byte) (port >> 8);
 		buffer[27] = (byte) (port & 0xff);
 		
+		byte[] address = addressToMap.getAddress();
+		buffer[28] = address[0];
+		buffer[29] = address[1];
+		buffer[30] = address[2];
+		buffer[31] = address[3];
+		
+		if (datagramSocket != null) {
+			DatagramPacket packet = new DatagramPacket(buffer, buffer.length, serverAddress.getAddress(), serverAddress.getPort());
+			
+			logger.fine("local addr " + datagramSocket.getLocalAddress() + " local port: " + datagramSocket.getLocalPort());
+			datagramSocket.send(packet);
+		} else {
+			DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
+			
+			outputStream.write(buffer, 0, buffer.length);
+			outputStream.flush();
+		}
+		
 	}
-}
+	
+	private void waitForResponse() throws IOException, SocketTimeoutException {
+		
+		byte[] response = new byte[1000];
+		
+		for (int i = 0; i < 50; i++) {
+			int length;
+			
+			if (datagramSocket != null) {
+				DatagramPacket packet = new DatagramPacket(response, response.length);
+				datagramSocket.receive(packet);
+				length = packet.getLength();
+			} else {
+				length = input.read(response);
+			}
+			
+			logger.fine("Got response! " + length + " local address " + datagramSocket.getLocalAddress()
+					+ " local port " + datagramSocket.getLocalPort());
+			
+			int type = (int) ((response[0] << 8 & 0xff00) | (response[1] & 0xff));
+			
+			if (type == Header.BINDING_RESPONSE) {
+				mappedAddress = Header.getAddress(response, Header.MAPPED_ADDRESS);
+				return;
+			}
+			
+			logger.fine("BAD STUN response, length " + length + " TCP " + (input != null));
+		}
+		throw new SocketTimeoutException("BAD STUN RESPONSE");
+	}
+} 

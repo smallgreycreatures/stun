@@ -200,7 +200,7 @@ public class Server {
 			System.exit(1);
 		}
 		System.out.println("Server started");
-		server.test();
+		//server.test();
 		
 	}
 	
