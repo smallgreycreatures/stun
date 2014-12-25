@@ -14,7 +14,7 @@ public class Server {
 	
 	private DatagramSocket socket;
 	
-	private static int serverPort = 3478;
+	private static int serverPort = 4200;
 	
 	public Server() {
 		
@@ -35,7 +35,7 @@ public class Server {
 	
 	class UDPListener extends Thread {
 		
-		private DatagramSocket socket;
+		//private DatagramSocket socket;
 		private int serverPort;
 		
 		public UDPListener(int port) throws IOException {
@@ -63,8 +63,9 @@ public class Server {
 				try {
 					byte[] buf = new byte[10000];
 					DatagramPacket packet = new DatagramPacket(buf, buf.length);
-					System.out.println("Waiting for request in run");
+					System.out.println("Waiting for request on address "+ socket.getLocalSocketAddress() + ":" + socket.getLocalPort() +"in run");
 					socket.receive(packet);
+					System.out.println("packet recieved");
 					processRequest(socket, packet);
 				} catch (IOException e) {
 					logger.warning("STUN Server: send or received failed " + e.getMessage());
@@ -75,7 +76,7 @@ public class Server {
 	}
 	
 	public void processRequest(DatagramSocket socket, DatagramPacket packet) {
-		
+		System.out.println("processRequest");
 		byte[] request = packet.getData();
 		int length = packet.getLength();
 		

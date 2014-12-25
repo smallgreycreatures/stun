@@ -4,7 +4,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketException;
 
 
-public class Main {
+public class Test {
 	
 	private DatagramSocket socket;
 	private InetSocketAddress serverAddress;
@@ -17,12 +17,12 @@ public class Main {
 	
 	public void process() {
 		try {
-			socket = new DatagramSocket(4200);
+			socket = new DatagramSocket(4202);
 		} catch (SocketException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		serverAddress = new InetSocketAddress("192.168.1.132", 4200);
+		serverAddress = new InetSocketAddress("localhost", 4200);
 		try {
 			Client client = new Client(serverAddress, socket);
 			InetSocketAddress address = client.getMappedAddress();
