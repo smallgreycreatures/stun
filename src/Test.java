@@ -10,8 +10,8 @@ public class Test {
 	private InetSocketAddress serverAddress;
 	
 	public static void main(String[]args) {
-		Main m = new Main();
-		m.process();
+		Test t = new Test();
+		t.process();
 		
 	}
 	
