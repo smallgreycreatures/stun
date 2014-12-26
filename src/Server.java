@@ -164,7 +164,7 @@ public class Server {
 				sb.append(privateAddress + ":" +port);
 				
 				System.out.println("Sending STUN Binding Response from " + responseSocket.getLocalAddress() + ":" + responseSocket.getLocalPort() 
-									+ " to " + packet.getAddress() + ":" + packet.getPort() + sb.toString());
+									+ " to " + packet.getAddress() + ":" + packet.getPort() + sb.toString() + " Packet length: " + packet.getLength());
 			} 
 		} catch (IOException e) {
 			e.printStackTrace();
