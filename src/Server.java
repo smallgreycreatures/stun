@@ -3,14 +3,20 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
 public class Server {
 	private static final Logger logger = Logger.getLogger(Server.class.getName());
+
+	private static ArrayList<InetAddress> inetList;
 	
 	private DatagramSocket socket;
 	
@@ -35,18 +41,19 @@ public class Server {
 	
 	class UDPListener extends Thread {
 		
-		//private DatagramSocket socket;
+		private DatagramSocket socket;
 		private int serverPort;
 		
 		public UDPListener(int port) throws IOException {
 			System.out.println("Starting udp listener");
+			this.serverPort = port;
+
 			try {
-				socket = new DatagramSocket(port);
+				socket = new DatagramSocket(serverPort);
 			} catch (SocketException e) {
 				throw new IOException("Can't create DatagramSocket: " + e.getMessage());
 			}
 			
-			this.serverPort = port;
 			
 //			synchronized (this) {
 //				start();
@@ -63,9 +70,10 @@ public class Server {
 				try {
 					byte[] buf = new byte[10000];
 					DatagramPacket packet = new DatagramPacket(buf, buf.length);
-					System.out.println("Waiting for request on address "+ socket.getLocalSocketAddress() + ":" + socket.getLocalPort() +"in run");
+					System.out.println("Waiting for request on address "+ socket.getLocalAddress().getHostAddress() + ":" + socket.getLocalPort() +" in run");
 					socket.receive(packet);
 					System.out.println("packet recieved");
+					printRequest(packet.getData());
 					processRequest(socket, packet);
 				} catch (IOException e) {
 					logger.warning("STUN Server: send or received failed " + e.getMessage());
@@ -74,7 +82,20 @@ public class Server {
 		}
 		
 	}
-	
+	public void printRequest(byte[] request) {
+		
+		StringBuilder sb = new StringBuilder();
+		sb.append("Message recieved:\n");
+		
+		
+		int messageType = (int) (((request[0] << 8) & 0xff00) | (request[1] & 0xff));
+		
+		sb.append("Message type:" + messageType + "\n");
+		
+		System.out.println(sb.toString());
+		
+		
+	}
 	public void processRequest(DatagramSocket socket, DatagramPacket packet) {
 		System.out.println("processRequest");
 		byte[] request = packet.getData();
@@ -87,6 +108,69 @@ public class Server {
                 + " length " + length + " bytes " + " from " + isa);
 
 		byte[] response = getResponse(isa, request, length);
+		
+		InetSocketAddress responseAddress = Header.getAddress(request, Header.RESPONSE_ADDRESS);
+		//System.out.println("ResponseAddress:" + responseAddress.toString());
+		
+		if (responseAddress != null) {
+
+			packet.setAddress(responseAddress.getAddress());
+			packet.setPort(responseAddress.getPort());
+		}
+		
+		/*
+		 * ChangeRequest - For alternating between servers in order to validate if the user
+		 * is behind a Symmetric NAT. Will try implementing this. 
+		 */
+		
+		int changeRequest = Header.getChangeRequest(request);
+		
+		if ((changeRequest & Header.CHANGE_IP_MASK) != 0) {
+			System.out.println("Exititing because we were requested to change ip. Can't do that");
+			return;
+		}
+		
+		DatagramSocket responseSocket = socket;
+		
+		if ((changeRequest & Header.CHANGE_PORT_MASK) != 0) {
+			try {
+				responseSocket = new DatagramSocket();
+				
+			} catch (SocketException e) {
+				e.printStackTrace();
+				String s = "CHANGE_PORT set but can't create new socket! " + e.getMessage();
+				response = getBindingErrorResponse(request, Header.GLOBAL_ERROR, s);
+			}
+			
+		}
+		
+		packet.setData(response);
+		
+		try {
+			responseSocket.send(packet);
+			
+			StringBuilder sb = new StringBuilder();
+			
+			if (request.length >= Header.STUN_HEADER_LENGTH + Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS_LENGTH) {
+				
+				//All the 0xff are here to convert from signed bits to unsigned bits becasue we don't need unsigned ones here
+				int port = (int) (((request[Header.STUN_HEADER_LENGTH + Header.TYPE_LENGTH_VALUE + 2] << 8) & 0xff00) | (request[Header.TYPE_LENGTH_VALUE + 3] & 0xff ));
+				
+				String privateAddress = "Private Address: " + (int) (request[Header.STUN_HEADER_LENGTH + Header.TYPE_LENGTH_VALUE + 4] & 0xff)
+															+ (int) (request[Header.STUN_HEADER_LENGTH + Header.TYPE_LENGTH_VALUE + 5] & 0xff)
+															+ (int) (request[Header.STUN_HEADER_LENGTH + Header.TYPE_LENGTH_VALUE + 6] & 0xff)
+															+ (int) (request[Header.STUN_HEADER_LENGTH + Header.TYPE_LENGTH_VALUE + 7] & 0xff);
+				
+				sb.append(privateAddress + ":" +port);
+				
+				System.out.println("Sending STUN Binding Response from " + responseSocket.getLocalAddress() + ":" + responseSocket.getLocalPort() 
+									+ " to " + packet.getAddress() + ":" + packet.getPort() + sb.toString());
+			} 
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		
 	}
 	
 	//Den här metoden kollar om Meddelandet är långt nog för att ta ha en STUN Header (20bytes)
@@ -189,9 +273,29 @@ public class Server {
 			return response;
 	}
 	
+	private static void fillInetList() {
+		Enumeration<NetworkInterface> nets;
+		try {
+			nets = NetworkInterface.getNetworkInterfaces();
+
+			for(NetworkInterface netInt: Collections.list(nets)) {
+				for(InetAddress iAdd: Collections.list(netInt.getInetAddresses())) {
+					inetList.add(iAdd);
+					System.out.println(iAdd.getHostAddress() + " added to inetList");
+
+				}
+			}
+		}
+		catch(SocketException e) { System.out.println("Socket exception while adding local network addresses to list " + e.getMessage()); }
+	}
+	
 	public static void main(String[]args) {
-		logger.log(Level.FINEST, "Starting");
+		logger.fine("asd");
 		logger.toString();
+		
+		inetList = new ArrayList<InetAddress>();
+		fillInetList();
+		
 		Server server = new Server();
 		
 		try {
@@ -201,8 +305,14 @@ public class Server {
 			System.exit(1);
 		}
 		System.out.println("Server started");
-		//server.test();
-		
+		/*try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		server.test();
+		*/
 	}
 	
 	public void test() {
@@ -226,6 +336,7 @@ public class Server {
 		DatagramPacket packet = null;
 		
 		try {
+
 			packet = new DatagramPacket(request, request.length, InetAddress.getLocalHost(), serverPort);
 		} catch (UnknownHostException e) {
 			System.out.println("Can't get localhost");
@@ -234,7 +345,7 @@ public class Server {
 		
 		try {
 			socket.send(packet);
-			
+			System.out.println("packet sent");
 			if (logger.isLoggable(Level.FINEST)) {
 				Header.dump("Sent stun binding request to " + packet.getAddress() + ": " + packet.getPort(), request, 0, request.length);
 			}

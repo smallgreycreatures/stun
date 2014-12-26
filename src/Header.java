@@ -43,7 +43,9 @@ public class Header {
 	public static InetSocketAddress getAddress(byte[] request, int desiredType) {
 		
 		InetSocketAddress isa = null;
-
+		
+		//Vi plockar ut längden genom att kolla i length-delen av headern. 
+		//Vi bitshiftar och bitmaskar bitarna så att de blir lästa korrekt
 		int length = (int) (((request[2] << 8) & 0xff00) | (request[3] & 0xff));
 		
 		int offset = STUN_HEADER_LENGTH;

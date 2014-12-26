@@ -8,6 +8,8 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
@@ -29,7 +31,8 @@ public class Client extends Thread {
 	private DataInputStream input;
 	
 	private InetSocketAddress mappedAddress;
-	
+	  ConsoleHandler consoleHandler = new ConsoleHandler();
+
 	private boolean done;
 	
 	public Client(InetSocketAddress serverAddress, DatagramSocket datagramSocket) throws IOException {
@@ -37,8 +40,9 @@ public class Client extends Thread {
 		
 		this.serverAddress = serverAddress;
 		this.datagramSocket = datagramSocket;
+		logger.addHandler(consoleHandler);
 		
-		logger.fine("Starting stun client to " + serverAddress);
+		logger.info("Starting stun client to " + serverAddress);
 		start();
 		
 	}
@@ -71,7 +75,7 @@ public class Client extends Thread {
 			throw new IOException(sb.toString());
 		}
 		
-		logger.fine("mapped address is " + mappedAddress);
+		logger.info("mapped address is " + mappedAddress);
 		
 		return mappedAddress;
 	}
@@ -80,12 +84,10 @@ public class Client extends Thread {
 		done = true;
 		notifyAll();
 	}
-	
 	public void run() {
-		
 		int socketTimeout;
 		
-		logger.fine("using STUN server " + serverAddress);
+		logger.info("using STUN server " + serverAddress);
 		
 		try {
 			if (datagramSocket != null) {
@@ -103,9 +105,10 @@ public class Client extends Thread {
 		
 		for (int i = 0; i < retries; i++) {
 			
+			
 			//Prepare and send stun request
 			try {
-				logger.fine("Sending STUN request " + i);
+				logger.info("Sending STUN request " + i);
 				sendRequest();
 			} catch (IOException e) {
 				logger.warning("Unable to send stun request: " + e.getMessage());
@@ -129,6 +132,7 @@ public class Client extends Thread {
 				logger.warning("Unable to reset socket timeout: " + e.getMessage());
 			}
 		}
+		System.out.println("Out of loop");
 	}
 	private void sendRequest() throws IOException {
 		InetAddress addressToMap;
@@ -149,7 +153,7 @@ public class Client extends Thread {
 			throw new IOException("Invalid stun server address: null ");
 		}
 		
-		logger.fine("StunClient: asking STUN server " + serverAddress.getAddress() + ":" + serverAddress.getPort() 
+		logger.info("StunClient: asking STUN server " + serverAddress.getAddress() + ":" + serverAddress.getPort() 
 				+ " to get mapping for " + addressToMap.getHostAddress() +":" + port);
 		
 		byte[] buffer = new byte[Header.STUN_HEADER_LENGTH + Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS_LENGTH];
@@ -181,8 +185,9 @@ public class Client extends Thread {
 		if (datagramSocket != null) {
 			DatagramPacket packet = new DatagramPacket(buffer, buffer.length, serverAddress.getAddress(), serverAddress.getPort());
 			
-			logger.fine("local addr " + datagramSocket.getLocalAddress() + " local port: " + datagramSocket.getLocalPort());
+			logger.info("local addr " + datagramSocket.getLocalAddress() + " local port: " + datagramSocket.getLocalPort());
 			datagramSocket.send(packet);
+			System.out.println("Packet sent!");
 		} else {
 			DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
 			
@@ -193,7 +198,7 @@ public class Client extends Thread {
 	}
 	
 	private void waitForResponse() throws IOException, SocketTimeoutException {
-		
+		System.out.println("Waiting for response");
 		byte[] response = new byte[1000];
 		
 		for (int i = 0; i < 50; i++) {
@@ -202,12 +207,13 @@ public class Client extends Thread {
 			if (datagramSocket != null) {
 				DatagramPacket packet = new DatagramPacket(response, response.length);
 				datagramSocket.receive(packet);
+				System.out.println("packet recieved");
 				length = packet.getLength();
 			} else {
 				length = input.read(response);
 			}
 			
-			logger.fine("Got response! " + length + " local address " + datagramSocket.getLocalAddress()
+			logger.info("Got response! " + length + " local address " + datagramSocket.getLocalAddress()
 					+ " local port " + datagramSocket.getLocalPort());
 			
 			int type = (int) ((response[0] << 8 & 0xff00) | (response[1] & 0xff));
@@ -217,7 +223,7 @@ public class Client extends Thread {
 				return;
 			}
 			
-			logger.fine("BAD STUN response, length " + length + " TCP " + (input != null));
+			logger.info("BAD STUN response, length " + length + " TCP " + (input != null));
 		}
 		throw new SocketTimeoutException("BAD STUN RESPONSE");
 	}
