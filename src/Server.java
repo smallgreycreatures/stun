@@ -18,9 +18,9 @@ public class Server {
 
 	private static ArrayList<InetAddress> inetList;
 	
-	private DatagramSocket socket;
+	//private DatagramSocket socket;
 	
-	private static int serverPort = 4200;
+	private static int serverPort = 3478;
 	
 	public Server() {
 		
@@ -29,8 +29,8 @@ public class Server {
     public void startServer() throws IOException {
     	UDPListener ul1 = new UDPListener(serverPort);
     	ul1.start();
-    	UDPListener ul2 = new UDPListener(serverPort + 1);
-    	ul2.start();
+    	//UDPListener ul2 = new UDPListener(serverPort + 1);
+    	//ul2.start();
     	System.out.println("Created");
     }
 
@@ -89,8 +89,10 @@ public class Server {
 		
 		
 		int messageType = (int) (((request[0] << 8) & 0xff00) | (request[1] & 0xff));
+		int length = request.length;
 		
-		sb.append("Message type:" + messageType + "\n");
+		sb.append("Message type:" + messageType + "\n"
+				+ "Packet Lenght: " + length + "\n");
 		
 		System.out.println(sb.toString());
 		
@@ -305,14 +307,14 @@ public class Server {
 			System.exit(1);
 		}
 		System.out.println("Server started");
-		/*try {
+		try {
 			Thread.sleep(1000);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		server.test();
-		*/
+		
 	}
 	
 	public void test() {

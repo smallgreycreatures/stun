@@ -93,6 +93,7 @@ public class Header {
 			logger.finest("Found Address " + isa);
 			break;
 		}
+		System.out.println("Got address");
 		return isa;
 	}
 	

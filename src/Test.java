@@ -43,16 +43,17 @@ public class Test {
 		inetList = new ArrayList<InetAddress>();
 		fillInetList();
 		try {
-			socket = new DatagramSocket(4202);
+			socket = new DatagramSocket(4200);
 		} catch (SocketException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		serverAddress = new InetSocketAddress(inetList.get(1), 4200);
+		serverAddress = new InetSocketAddress("192.168.1.120", 3478);
 		try {
 			Client client = new Client(serverAddress, socket);
+			client.start();
 			InetSocketAddress address = client.getMappedAddress();
-			System.out.println(address.toString());
+			System.out.println("Final address:" + address.toString());
 		} catch (IOException e) {
 
 			e.printStackTrace();
