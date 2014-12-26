@@ -63,7 +63,6 @@ public class Server {
 					System.out.println("Waiting for request on address "+ socket.getLocalAddress().getHostAddress() + ":" + socket.getLocalPort() +" in run");
 					socket.receive(packet);
 					System.out.println("packet recieved");
-					printRequest(packet.getData());
 					processRequest(socket, packet);
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -72,7 +71,7 @@ public class Server {
 		}
 
 	}
-	public void printRequest(byte[] request) {
+	public void printResponse(byte[] request) {
 
 		StringBuilder sb = new StringBuilder();
 		sb.append("Message recieved:\n");
@@ -84,7 +83,7 @@ public class Server {
 		sb.append("Message type:" + messageType + "\n"
 				+ "Packet Lenght: " + length + "\n");
 
-	/*	if (request.length >= Header.LENGTH + Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS_LENGTH) {
+		/*	if (request.length >= Header.LENGTH + Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS_LENGTH) {
 
 			//All the 0xff are here to convert from signed bits to unsigned bits becasue we don't need unsigned ones here
 			int port = (int) (((request[Header.LENGTH + Header.TYPE_LENGTH_VALUE + 2] << 8) & 0xff00) | (request[Header.TYPE_LENGTH_VALUE + 3] & 0xff ));
@@ -95,7 +94,7 @@ public class Server {
 					+ (int) (request[Header.LENGTH + Header.TYPE_LENGTH_VALUE + 7] & 0xff);
 
 			sb.append(privateAddress + ":" +port);
-	
+
 
 		}*/
 
@@ -113,12 +112,10 @@ public class Server {
 		logger.info("Got UDP Stun request on socket "
 				+ socket.getLocalAddress() + ":" + socket.getLocalPort()
 				+ " length " + length + " bytes " + " from " + isa);
-		InetSocketAddress responseAddress = Header.getAddress(request, Header.RESPONSE_ADDRESS);
+		//InetSocketAddress responseAddress = Header.getAddress(request, Header.RESPONSE_ADDRESS);
 
 		byte[] response = buildResponse(isa, request, length);
-		
-		logger.info("ResponseAddress:" + responseAddress);
-
+		printResponse(response);
 		/*
 		 * ChangeRequest - For alternating between servers in order to validate if the user
 		 * is behind a Symmetric NAT. Will try implementing this. 
@@ -128,24 +125,25 @@ public class Server {
 		if (!changeIP(changeRequest)) {
 
 			DatagramSocket responseSocket = changeSocket(socket, changeRequest, request, response);
-			packAndSendData(responseSocket, responseAddress, packet, response);
+			packAndSendData(responseSocket, packet, response);
 
 		}
 
 	}
 
 	private boolean changeIP(int changeRequest) {
-		
+
 		if ((changeRequest & Header.CHANGE_IP_MASK) != 0) {
-			
+
 			logger.warning("Exit because we were requested to change ip. Can't do that (yet)");
 			return true;
-			
+
 		} else {
-			
+
 			return false;
 		}
 	}
+	
 	private DatagramSocket changeSocket(DatagramSocket socket, int changeRequest, byte[] request, byte[] response) {
 
 		if ((changeRequest & Header.CHANGE_PORT_MASK) != 0) {
@@ -162,45 +160,44 @@ public class Server {
 		return socket;
 	}
 
-	private void packAndSendData(DatagramSocket socket, InetSocketAddress address, DatagramPacket packet, byte[] response) {
-		if (address != null) {
+	private void packAndSendData(DatagramSocket socket, DatagramPacket packet, byte[] response) {
+		try {
+			packet.setData(response);
+			socket.send(packet);
 
-			packet.setAddress(address.getAddress());
-			packet.setPort(address.getPort());
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
-			try {
-				packet.setData(response);
-				socket.send(packet);
 
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		
 	}
+	
 	private int checkHeaderErrors(byte[] request, int length) {
-		
+
 		if (length < Header.LENGTH) {
-			
+
 			return Header.BAD_REQUEST;
 		}
 		int messageType = (int) (((request[0] << 8) & 0xff00) | (request[1] & 0xff));
-		
+
 		if (messageType != Header.BINDING_REQUEST) {
-			
-			 return Header.GLOBAL_ERROR;
+
+			return Header.GLOBAL_ERROR;
 		}
-		
+
 		return 1;
 	}
-	
+
 	private byte[] buildResponse(InetSocketAddress isa, byte[] request, int length) {
-		
+
 		int messageType = checkHeaderErrors(request, length);
-		
+
 		if (messageType == 1) {
 			return buildBindingResponse(isa, request, length);
 		} else {
-			return buildErrorResponse(request, messageType, "as is");
+			if (messageType == 400) 
+				return buildErrorResponse(request, messageType, "BAD REQUEST - Header to small");
+			else 
+				return buildErrorResponse(request, messageType, "GLOBAL ERROR - Only Binding Requests accepted");
 		}
 	}
 
@@ -212,25 +209,42 @@ public class Server {
 
 		System.arraycopy(request, 0, response, 0, Header.LENGTH);
 
-		response[0] = 1;
-
-		response[3] = (byte) Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS +
-				Header.TYPE_LENGTH_VALUE + Header.CHANGED_ADDRESS_LENGTH;
-
-		response[Header.LENGTH + 1] = Header.MAPPED_ADDRESS;	//type
-
-		response[Header.LENGTH + 3] = Header.MAPPED_ADDRESS_LENGTH;	//längden
+		setHeaderTo(response);
+		setMappedTypeAndValueTo(response);
 
 		logger.fine("responding with " + isa);
 
 		//Dags att ordna med addressen!
-		int sourcePort = isa.getPort();
+		addPortTo(response, isa);
+		addSourceAddressTo(response, isa);
 
+		return response;
+	}
+	private void setHeaderTo(byte[] response) {
+		response[0] = 1;
+
+		response[3] = (byte) Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS +
+				Header.TYPE_LENGTH_VALUE + Header.CHANGED_ADDRESS_LENGTH;
+	}
+	
+	private void setMappedTypeAndValueTo(byte[] response) {
+		response[Header.LENGTH + 1] = Header.MAPPED_ADDRESS;	//type
+
+		response[Header.LENGTH + 3] = Header.MAPPED_ADDRESS_LENGTH;	//length
+	}
+	
+	private void addPortTo(byte[] response, InetSocketAddress isa) {
+		
+		int sourcePort = isa.getPort();
+		
 		response[Header.LENGTH + 6] = (byte) (sourcePort >> 8);
 		response[Header.LENGTH + 7] = (byte) (sourcePort & 0xff);
-
+		
+	}
+	
+	private void addSourceAddressTo(byte[] response, InetSocketAddress isa) {
 		byte[] sourceAddress = isa.getAddress().getAddress();
-		//PRINT ME!
+
 		response[Header.LENGTH + 8] = sourceAddress[0];
 		response[Header.LENGTH + 9] = sourceAddress[1];
 		response[Header.LENGTH + 10] = sourceAddress[2];
@@ -239,22 +253,9 @@ public class Server {
 		response[Header.LENGTH + 13] = Header.CHANGED_ADDRESS;	
 
 		response[Header.LENGTH + 15] = Header.CHANGED_ADDRESS_LENGTH;
+		response[Header.LENGTH + 17] = 1; //Address family - only IPv4
 
-		response[Header.LENGTH + 17] = 1; //Address family - IPV4 or IPV6
-
-		response[Header.LENGTH + 18] = (byte) (sourcePort >> 8);	//bitshifting
-		response[Header.LENGTH + 19] = (byte) (sourcePort & 0xff); //bitmasking
-		//bitmasking handlar om att välja ut endast de bitar som representeras i bägge argumenten och representera dem
-		//Här tror jag dock att man helt enkelt tar bort signed represenationen så att det blir ett unsigned value.
-
-		response[Header.LENGTH + 20] = sourceAddress[0];
-		response[Header.LENGTH + 21] = sourceAddress[1];
-		response[Header.LENGTH + 22] = sourceAddress[2];
-		response[Header.LENGTH + 23] = sourceAddress[3];
-
-		return response;
 	}
-
 	private byte[] buildErrorResponse(byte[] request, int responseCode, String reason) {
 
 		byte[] response = new byte[Header.LENGTH + Header.ERROR_CODE_LENGTH + reason.length()];
