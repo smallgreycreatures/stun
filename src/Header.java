@@ -9,7 +9,7 @@ public class Header {
 
 	private static final Logger logger = Logger.getLogger(Header.class.getName());
 	
-	public static final int STUN_HEADER_LENGTH = 20;
+	public static final int LENGTH = 20;
 	
 	public static final int TYPE_LENGTH_VALUE = 4;
 	
@@ -46,16 +46,18 @@ public class Header {
 		
 		//Vi plockar ut längden genom att kolla i length-delen av headern. 
 		//Vi bitshiftar och bitmaskar bitarna så att de blir lästa korrekt
-		int length = (int) (((request[2] << 8) & 0xff00) | (request[3] & 0xff));
-		
-		int offset = STUN_HEADER_LENGTH;
+        int length = (int) (((request[2] << 8) & 0xff00) | (request[3] & 0xff));
+		System.out.println("Length in Header: " + length);
+		int offset = LENGTH;
 		
 		logger.finest("Searching for type " + Integer.toHexString(desiredType));
 		
 		while (length > 0) {
 			int type = (int) request[offset +1];
+			System.out.println("Type: " + type + "desiredType: " + desiredType);
 			
 			int attributeLength = (int) (((request[offset + 2] << 8) & 0xff00) | (request[offset + 3] & 0xff));
+			System.out.println("Attribute length in Header:" + attributeLength);
 			
 			if (type != desiredType) {
 				logger.finest("Skipping type " + type);
@@ -66,12 +68,13 @@ public class Header {
 			}
 			
 			if (attributeLength != MAPPED_ADDRESS_LENGTH) {
+				System.out.println("Return null?");
 				logger.warning("Invalid Response Address Length");
 				return null;
 			}
 			
 			int port = (int) (((request[offset + 6] << 8) & 0xff00) | (request[offset + 7] & 0xff));
-			
+			System.out.println("Port in Header: " + port);
 			InetAddress ia;
 			
 			try {
@@ -90,7 +93,7 @@ public class Header {
 			}
 			
 			isa = new InetSocketAddress(ia, port);
-			logger.finest("Found Address " + isa);
+			System.out.println("Found Address " + isa);
 			break;
 		}
 		System.out.println("Got address");
@@ -103,7 +106,7 @@ public class Header {
 		
 		int length = (int) (((request[2] << 8) & 0xff00) | (request[3] & 0xff));
 		
-		int offset = STUN_HEADER_LENGTH;
+		int offset = LENGTH;
 		
 		logger.finest("Searching for change request attribute");
 		

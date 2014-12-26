@@ -145,7 +145,7 @@ public class Client extends Thread {
 		System.out.println("StunClient: asking STUN server " + serverAddress.getAddress() + ":" + serverAddress.getPort() 
 				+ " to get mapping for " + addressToMap.getHostAddress() +":" + port);
 		
-		byte[] buffer = new byte[Header.STUN_HEADER_LENGTH + Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS_LENGTH];
+		byte[] buffer = new byte[Header.LENGTH + Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS_LENGTH];
 		
 		buffer[1] = (byte) Header.BINDING_REQUEST;
 		buffer[3] = (byte) Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS_LENGTH;

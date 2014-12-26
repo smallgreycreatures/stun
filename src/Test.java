@@ -48,7 +48,7 @@ public class Test {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		serverAddress = new InetSocketAddress("192.168.1.120", 3478);
+		serverAddress = new InetSocketAddress("192.168.1.132", 3478);
 		try {
 			Client client = new Client(serverAddress, socket);
 			client.start();
