@@ -91,7 +91,6 @@ public class Client extends Thread {
 			} 
 		} catch (SocketException e) {
 			e.printStackTrace();
-			done();
 			System.exit(0);
 		}
 		
@@ -120,6 +119,7 @@ public class Client extends Thread {
 				e.printStackTrace();
 			}
 		}
+		done();
 		System.out.println("Out of loop");
 		//System.exit(0);
 	}
