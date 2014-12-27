@@ -11,7 +11,6 @@ import java.util.Enumeration;
 
 public class Test {
 	
-	private ArrayList<InetAddress> inetList;
 	private DatagramSocket socket;
 	private InetSocketAddress serverAddress;
 	
@@ -23,32 +22,15 @@ public class Test {
 		
 	}
 	
-	private void fillInetList() {
-		Enumeration<NetworkInterface> nets;
-		try {
-			nets = NetworkInterface.getNetworkInterfaces();
-
-			for(NetworkInterface netInt: Collections.list(nets)) {
-				for(InetAddress iAdd: Collections.list(netInt.getInetAddresses())) {
-					inetList.add(iAdd);
-					System.out.println(iAdd.getHostAddress() + " added to inetList");
-
-				}
-			}
-		}
-		catch(SocketException e) { System.out.println("Socket exception while adding local network addresses to list " + e.getMessage()); }
-	}
-	
 	public void process() {
-		inetList = new ArrayList<InetAddress>();
-		fillInetList();
+
 		try {
 			socket = new DatagramSocket(4200);
 		} catch (SocketException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 		serverAddress = new InetSocketAddress("192.168.1.132", 3478);
+		
 		try {
 			Client client = new Client(serverAddress, socket);
 			client.start();

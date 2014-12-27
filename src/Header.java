@@ -29,7 +29,6 @@ public class Header {
 	public static final int CHANGE_PORT_MASK = 2;
 	public static final int CHANGE_IP_MASK = 4;
 	
-	
 	public static final int CHANGED_ADDRESS = 5;
 	public static final int CHANGED_ADDRESS_LENGTH = 8;
 	

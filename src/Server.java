@@ -228,9 +228,12 @@ public class Server {
 	}
 	
 	private void setMappedTypeAndValueTo(byte[] response) {
-		response[Header.LENGTH + 1] = Header.MAPPED_ADDRESS;	//type
+		response[Header.LENGTH + 1] = Header.MAPPED_ADDRESS;
 
-		response[Header.LENGTH + 3] = Header.MAPPED_ADDRESS_LENGTH;	//length
+		response[Header.LENGTH + 3] = Header.MAPPED_ADDRESS_LENGTH;
+		
+		response[Header.LENGTH + 5] = 1; //Address family - only IPv4
+
 	}
 	
 	private void addPortTo(byte[] response, InetSocketAddress isa) {
@@ -249,13 +252,8 @@ public class Server {
 		response[Header.LENGTH + 9] = sourceAddress[1];
 		response[Header.LENGTH + 10] = sourceAddress[2];
 		response[Header.LENGTH + 11] = sourceAddress[3];
-
-		response[Header.LENGTH + 13] = Header.CHANGED_ADDRESS;	
-
-		response[Header.LENGTH + 15] = Header.CHANGED_ADDRESS_LENGTH;
-		response[Header.LENGTH + 17] = 1; //Address family - only IPv4
-
 	}
+	
 	private byte[] buildErrorResponse(byte[] request, int responseCode, String reason) {
 
 		byte[] response = new byte[Header.LENGTH + Header.ERROR_CODE_LENGTH + reason.length()];
