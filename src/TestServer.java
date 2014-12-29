@@ -2,7 +2,9 @@ import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
@@ -27,15 +29,15 @@ public class TestServer {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
-		testClient(ipAddress, port, clientPort);
 		
+		testUDPClient(ipAddress, port, clientPort);
+		testTCPClient(ipAddress, port+1);
 		try {
 			server.shutdown();
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
-		/*
+		
 		ArrayList<InetAddress> inetList = Server.getInetList();
 		
 		
@@ -48,19 +50,38 @@ public class TestServer {
 
 			e.printStackTrace();
 		}
-		
-		testClient(ipAddress, port, clientPort+1);
-		
+		testUDPClient(ipAddress, port, clientPort+1);
+		testTCPClient(ipAddress, port+1);
+
 		try {
 			server2.shutdown();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		*/
+		
 		System.out.println("SUCCESS!");
 	}
 
-	public void testClient(String ipAddress, int port, int clientPort) {
+	public void testTCPClient(String serverAddress, int serverPort) {
+
+		try {
+			Socket socket = new Socket(serverAddress, serverPort);
+			
+			TCPClient client = new TCPClient(socket);
+			
+			client.start();
+			
+			InetSocketAddress address = client.getMappedAddress();
+			System.out.println("Your global TCP address is:" + address.toString());
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public void testUDPClient(String ipAddress, int port, int clientPort) {
 		InetSocketAddress serverAddress = new InetSocketAddress(ipAddress, port);
 		DatagramSocket socket = null;
 		try {
@@ -75,7 +96,7 @@ public class TestServer {
 		try {
 			InetSocketAddress address = client.getMappedAddress();
 			
-			System.out.println("Your public address is: " + address);
+			System.out.println("Your global UDP address is: " + address);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

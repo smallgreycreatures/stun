@@ -2,30 +2,45 @@ import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.NetworkInterface;
+import java.net.Socket;
 import java.net.SocketException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Enumeration;
+import java.net.UnknownHostException;
 
 
 public class Test {
 	
-	private DatagramSocket socket;
+	private DatagramSocket datagramSocket;
 	private InetSocketAddress serverAddress;
-	
+	private Socket socket;
 	public static void main(String[]args) {
 		Test t = new Test();
 		
-		t.process();
+		t.testTCP();
 		
 		
 	}
-	
+	public void testTCP() {
+
+		try {
+			socket = new Socket("192.168.1.132", 3479);
+			
+			TCPClient client = new TCPClient(socket);
+			
+			client.start();
+			
+			InetSocketAddress address = client.getMappedAddress();
+			System.out.println("Your global address is:" + address.toString());
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+	}
 	public void process() {
 
 		try {
-			socket = new DatagramSocket(4212);
+			datagramSocket = new DatagramSocket(4212);
 		} catch (SocketException e1) {
 			e1.printStackTrace();
 		}
@@ -34,7 +49,7 @@ public class Test {
 		serverAddress = new InetSocketAddress("192.168.1.132", 3478);
 		
 		try {
-			Client client = new Client(serverAddress, socket);
+			Client client = new Client(serverAddress, datagramSocket);
 			client.start();
 			InetSocketAddress address = client.getMappedAddress();
 			System.out.println("Your global address is:" + address.toString());

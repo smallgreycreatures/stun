@@ -1,7 +1,8 @@
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Inet6Address;
@@ -275,7 +276,7 @@ public class Server {
 		byte[] request = packet.getData();
 		int length = packet.getLength();
 
-		if (checkMagicCookieFor(request)) {
+		if (Header.compareMagicCookieIn(request)) {
 
 			InetSocketAddress isa = (InetSocketAddress) packet.getSocketAddress();
 
@@ -304,12 +305,19 @@ public class Server {
 	}
 
 	public void processRequest(Socket socket) throws IOException {
-		InputStream input = socket.getInputStream();
-		OutputStream output = socket.getOutputStream();
-
-		byte[] request = streamToByteArray(input);
-
-		if (checkMagicCookieFor(request)) {
+		DataInputStream input = new DataInputStream(socket.getInputStream());
+		DataOutputStream output = new DataOutputStream(socket.getOutputStream());
+		
+		byte[] request = new byte[1024];
+		
+		int length = input.read(request);
+		
+		if (length == -1) {
+			logger.log(Level.WARNING, "TCP Connection closed");
+			return;
+		}
+		
+		if (Header.compareMagicCookieIn(request)) {
 
 			InetSocketAddress isa = new InetSocketAddress(socket.getInetAddress(), socket.getPort());
 			logger.log(Level.FINE, "Message received from " + isa);
@@ -318,33 +326,11 @@ public class Server {
 
 			output.write(response);
 			logger.log(Level.FINE, "Message sent to " + isa);
+		
+		} else {
+			logger.log(Level.FINE, "magic cookie not ok, Probably not a STUN request. Not much to do");
 		}
 
-	}
-
-	private byte[] streamToByteArray(InputStream is) throws IOException {
-		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-		byte[] data = new byte[1024];
-		int read;
-
-		while ((read = is.read(data, 0, data.length)) != -1) {
-			buffer.write(data, 0, read);
-		}
-
-		buffer.flush();
-
-		return buffer.toByteArray();
-	}
-
-	private boolean checkMagicCookieFor(byte[] request) {
-
-		int magicCookie = 0x2112A442; //0x2112A442 = 10x554869826
-		int extractedCookie = (int) ((request[4] << 24 & 0xff000000) | (request[5] << 16 & 0xff0000) 
-				| (request[6] << 8 & 0xff00) | (request[7] & 0xff));
-
-		logger.log(Level.FINE, "magic cookie = incoming cookie "+ magicCookie + " = " + extractedCookie);
-
-		return (magicCookie == extractedCookie) ? true : false;
 	}
 
 	private boolean changeIP(int changeRequest) {

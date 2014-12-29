@@ -1,6 +1,7 @@
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.security.SecureRandom;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -50,7 +51,55 @@ public class Header {
 	public static void setConsoleHandlerLevel(Level newLevel) {
 		consoleHandler.setLevel(newLevel);
 	}
+	/**
+	 * A STUN Header MUST contain Type and Length of the request
+	 * @param request
+	 */
+	public static void addTypeAndLengthTo(byte[] request) {
+		request[1] = (byte) BINDING_REQUEST;
+		request[3] = (byte) TYPE_LENGTH_VALUE + MAPPED_IPV4_ADDRESS_LENGTH;
+	}
 
+	/**
+	 * A STUN Header MUST contain a Magic cookie with the value of 0x2112A442
+	 * according to RFC3489.
+	 * @param request
+	 */
+	public static void addMagicCookieTo(byte[] request) {
+		int magicCookie = 0x2112A442;
+
+		request[4] = (byte) (magicCookie >> 24 & 0xff);
+		request[5] = (byte) (magicCookie >> 16 & 0xff);
+		request[6] = (byte) (magicCookie >> 8 & 0xff);
+		request[7] = (byte) (magicCookie & 0xff);
+	}
+
+	/**
+	 * A transaction ID MUST be uniformly and randomly chosen 
+	 * and should be cryptographically random.
+	 * 
+	 * @param request
+	 */
+	public static void addTransactionIDTo(byte[] request) {
+		SecureRandom rnd = new SecureRandom();
+		byte rndBytes[] = new byte[12];
+		rnd.nextBytes(rndBytes);
+
+		for (int i = 0; i < 12; i++) {
+			request[i+8] = rndBytes[0];
+		}
+	}
+	public static boolean compareMagicCookieIn(byte[] request) {
+
+		int magicCookie = 0x2112A442; //0x2112A442 = 10x554869826
+		int extractedCookie = (int) ((request[4] << 24 & 0xff000000) | (request[5] << 16 & 0xff0000) 
+				| (request[6] << 8 & 0xff00) | (request[7] & 0xff));
+
+		logger.log(Level.FINE, "magic cookie = incoming cookie "+ magicCookie + " = " + extractedCookie);
+
+		return (magicCookie == extractedCookie) ? true : false;
+	}
+	
 	public static InetSocketAddress getAddress(byte[] request, int desiredType) {
 
 		InetSocketAddress isa = null;
@@ -141,5 +190,7 @@ public class Header {
 		}
 		return changeRequest;
 	}
+	
+
 
 }
