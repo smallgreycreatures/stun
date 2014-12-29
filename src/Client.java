@@ -16,7 +16,7 @@ public class Client extends Thread {
 
 	private static final Logger logger = Logger.getLogger(Client.class.getName());
 	private static ConsoleHandler consoleHandler = new ConsoleHandler();
-	
+
 	private static final int TIMEOUT = 500;
 
 	private int retries = 5;
@@ -24,10 +24,7 @@ public class Client extends Thread {
 	private InetSocketAddress serverAddress;
 	private DatagramSocket datagramSocket;
 
-	private DataInputStream input;
-
 	private InetSocketAddress mappedAddress;
-	
 
 	private boolean done;
 
@@ -39,7 +36,7 @@ public class Client extends Thread {
 
 
 	}
-	
+
 	public static void connectConsoleHandler() {
 		logger.addHandler(consoleHandler);
 	}
@@ -82,7 +79,7 @@ public class Client extends Thread {
 		done = true;
 		notifyAll();
 	}
-	
+
 	public void run() {
 		int socketTimeout = TIMEOUT;
 
@@ -112,7 +109,7 @@ public class Client extends Thread {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				
+
 				//If time out just try again after *2
 				socketTimeout = socketTimeout*2;
 				datagramSocket.setSoTimeout(socketTimeout);
@@ -122,7 +119,7 @@ public class Client extends Thread {
 		}
 		done();
 	}
-	
+
 	/**
 	 * Prepares the STUN binding request to be sent over UDP
 	 * @return byte array of STUN message.
@@ -136,11 +133,10 @@ public class Client extends Thread {
 		addTypeAndLengthTo(request);		
 		addMagicCookieTo(request);
 		addTransactionIDTo(request);
-		//addContentTo(request);
-		
+
 		return request;
 	}
-	
+
 	/**
 	 * sends the Stun binding request 
 	 * @param request
@@ -159,12 +155,12 @@ public class Client extends Thread {
 
 		logger.log(Level.FINE, "Packet sent! Length: " + packet.getLength());
 	}
-	
+
 	public void addTypeAndLengthTo(byte[] request) {
 		request[1] = (byte) Header.BINDING_REQUEST;
 		request[3] = (byte) Header.TYPE_LENGTH_VALUE + Header.MAPPED_IPV4_ADDRESS_LENGTH;
 	}
-	
+
 	/**
 	 * A STUN Header MUST contain a Magic cookie with the value of 0x2112A442
 	 * according to RFC3489.
@@ -172,13 +168,13 @@ public class Client extends Thread {
 	 */
 	public void addMagicCookieTo(byte[] request) {
 		int magicCookie = 0x2112A442;
-		
+
 		request[4] = (byte) (magicCookie >> 24 & 0xff);
 		request[5] = (byte) (magicCookie >> 16 & 0xff);
 		request[6] = (byte) (magicCookie >> 8 & 0xff);
 		request[7] = (byte) (magicCookie & 0xff);
 	}
-	
+
 	/**
 	 * A transaction ID MUST be uniformly and randomly chosen 
 	 * and should be cryptographically random.
@@ -189,65 +185,39 @@ public class Client extends Thread {
 		SecureRandom rnd = new SecureRandom();
 		byte rndBytes[] = new byte[12];
 		rnd.nextBytes(rndBytes);
-		
+
 		for (int i = 0; i < 12; i++) {
 			request[i+8] = rndBytes[0];
 		}
 	}
-	
-	/**
-	 * Adds the address and port to be mapped to the request
-	 * @param request
-	 */
-	public void addContentTo(byte[] request) {
-		InetAddress myAddress = datagramSocket.getLocalAddress();
-		int myPort = datagramSocket.getLocalPort();
-		
-		request[21] = Header.MAPPED_ADDRESS;
-		request[23] = Header.MAPPED_IPV4_ADDRESS_LENGTH;
 
-		request[25] = 1; //address Family. Only serving IPv4
-
-		request[26] = (byte) (myPort >> 8);
-		request[27] = (byte) (myPort & 0xff);
-
-		byte[] address = myAddress.getAddress();
-		
-		//add address to byte[]
-		for (int i = 0; i < 4; i++) {
-			request[28+i] = address[i];
-		}
-	}
-	
 	private void waitForResponse() throws IOException, SocketTimeoutException {
 		logger.log(Level.FINE, "Waiting for response");
-		byte[] response = new byte[1000];
+		byte[] response = new byte[1024];
 
 		for (int i = 0; i < 50; i++) {
 			int length;
 
-			if (datagramSocket != null) {
-				DatagramPacket packet = new DatagramPacket(response, response.length);
-				datagramSocket.receive(packet);
-				logger.log(Level.FINE, "packet recieved");
-				length = packet.getLength();
-			} else {
-				length = input.read(response);
-			}
 
-			logger.log(Level.FINE, "Got response! " + length + " local address " + datagramSocket.getLocalAddress()
-					+ " local port " + datagramSocket.getLocalPort());
+			DatagramPacket packet = new DatagramPacket(response, response.length);
+			datagramSocket.receive(packet);
+			logger.log(Level.FINE, "Packet recieved.");
+			length = packet.getLength();
+
+
+			logger.log(Level.FINE, "Got response! Length:" + length + " Local address:" + datagramSocket.getLocalAddress()
+					+ " Local port:" + datagramSocket.getLocalPort());
 
 			int type = (int) ((response[0] << 8 & 0xff00) | (response[1] & 0xff));
 
 			if (type == Header.BINDING_RESPONSE) {
-				logger.log(Level.FINE, "Setting mappedAddress");
+				logger.log(Level.FINE, "Setting mappedAddress.");
 				mappedAddress = Header.getAddress(response, Header.MAPPED_ADDRESS);
 				return;
 			}
 
-			logger.log(Level.WARNING, "BAD STUN response, length " + length + " TCP " + (input != null));
+			logger.log(Level.WARNING, "BAD STUN response, length:" + length);
 		}
-		throw new SocketTimeoutException("BAD STUN RESPONSE");
+		throw new SocketTimeoutException("BAD STUN RESPONSE!");
 	}
 } 
