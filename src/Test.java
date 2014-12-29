@@ -29,6 +29,8 @@ public class Test {
 		} catch (SocketException e1) {
 			e1.printStackTrace();
 		}
+		
+		//Public STUN server available through the STUNTMAN project on stun.stunprotocol.org: 3478 
 		serverAddress = new InetSocketAddress("192.168.1.132", 3478);
 		
 		try {
