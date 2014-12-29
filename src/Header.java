@@ -21,7 +21,9 @@ public class Header {
 	public static final int BINDING_RESPONSE = 0x101;
 
 	public static final int MAPPED_ADDRESS = 1;
-	public static final int MAPPED_ADDRESS_LENGTH = 8;
+	public static final int MAPPED_IPV4_ADDRESS_LENGTH = 8;
+	public static final int MAPPED_IPV6_ADDRESS_LENGTH = 20;
+
 
 	public static final int RESPONSE_ADDRESS = 2;
 	public static final int RESPONSE_ADDRESS_LENGTH = 8;
@@ -74,7 +76,7 @@ public class Header {
 				continue;
 			}
 
-			if (attributeLength != MAPPED_ADDRESS_LENGTH) {
+			if (attributeLength != MAPPED_IPV4_ADDRESS_LENGTH && attributeLength != MAPPED_IPV6_ADDRESS_LENGTH) {
 				logger.warning("Invalid Response Address Length");
 				return null;
 			}

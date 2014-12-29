@@ -1,6 +1,7 @@
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
@@ -170,7 +171,7 @@ public class Server {
 					logger.log(Level.FINE, "IOException - will be thrown while shutting down " + e.getMessage());
 				}
 			}
-			System.out.println("Thread " + (serverPort - 3478) + " out of running");
+			logger.log(Level.FINE,"Thread " + (serverPort - 3478) + " out of running");
 		}
 	}
 	public void printResponse(byte[] request) {
@@ -196,7 +197,7 @@ public class Server {
 		int length = packet.getLength();
 
 		if (checkMagicCookieFor(request)) {
-
+			
 			InetSocketAddress isa = (InetSocketAddress) packet.getSocketAddress();
 
 			logger.log(Level.FINE, "Got UDP Stun request on socket "
@@ -311,43 +312,53 @@ public class Server {
 
 	private byte[] buildBindingResponse(InetSocketAddress isa, byte[] request, int length) {
 		logger.log(Level.FINE, "Building Binding Response");
-
-		byte[] response = new byte[Header.LENGTH + Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS_LENGTH
-		                           + Header.TYPE_LENGTH_VALUE + Header.CHANGED_ADDRESS_LENGTH];
+		
+		int ipFamily = ipFamilyChecker(isa);
+		int mappedAttributeLength = ((ipFamily == 2)? Header.MAPPED_IPV6_ADDRESS_LENGTH: Header.MAPPED_IPV4_ADDRESS_LENGTH);
+		byte[] response = new byte[Header.LENGTH + Header.TYPE_LENGTH_VALUE + mappedAttributeLength];
 
 		System.arraycopy(request, 0, response, 0, Header.LENGTH);
 
-		setHeaderTo(response);
-		setMappedTypeAndValueTo(response);
+		setHeaderTo(response, mappedAttributeLength);
+		setMappedTypeAndValueTo(response, mappedAttributeLength, ipFamily);
 
 		logger.log(Level.FINE, "responding with " + isa);
 
-		addPortTo(response, isa);
+		addAttributesTo(response, isa, ipFamily);
 		addSourceAddressTo(response, isa);
 
 		return response;
 	}
-
-	private void setHeaderTo(byte[] response) {
+	
+	/**
+	 * Method to determine if the address is an instance of IPv4 or IPv6
+	 * @param isa
+	 * @return 2 if isa == IPv6, 1 if isa == IPv4 
+	 */
+	private int ipFamilyChecker(InetSocketAddress isa) {
+		InetAddress ia = isa.getAddress();
+		
+		return (ia instanceof Inet6Address) ? 2 : 1;
+	}
+	
+	
+	private void setHeaderTo(byte[] response, int attributeLength) {
 		response[0] = 1;
-
-		response[3] = (byte) Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS +
-				Header.TYPE_LENGTH_VALUE + Header.CHANGED_ADDRESS_LENGTH;
+		response[3] = (byte) (Header.TYPE_LENGTH_VALUE + attributeLength);
 	}
 
-	private void setMappedTypeAndValueTo(byte[] response) {
+	private void setMappedTypeAndValueTo(byte[] response, int attributeLength, int ipFamily) {
 		response[Header.LENGTH + 1] = Header.MAPPED_ADDRESS;
 
-		response[Header.LENGTH + 3] = Header.MAPPED_ADDRESS_LENGTH;
-
-		response[Header.LENGTH + 5] = 1; //Address family - only IPv4
+		response[Header.LENGTH + 3] = (byte) attributeLength;
 
 	}
 
-	private void addPortTo(byte[] response, InetSocketAddress isa) {
-
+	private void addAttributesTo(byte[] response, InetSocketAddress isa, int ipFamily) {
 		int sourcePort = isa.getPort();
 
+		response[Header.LENGTH + 5] = (byte) ipFamily;
+		
 		response[Header.LENGTH + 6] = (byte) (sourcePort >> 8);
 		response[Header.LENGTH + 7] = (byte) (sourcePort & 0xff);
 
@@ -355,11 +366,10 @@ public class Server {
 
 	private void addSourceAddressTo(byte[] response, InetSocketAddress isa) {
 		byte[] sourceAddress = isa.getAddress().getAddress();
-
-		response[Header.LENGTH + 8] = sourceAddress[0];
-		response[Header.LENGTH + 9] = sourceAddress[1];
-		response[Header.LENGTH + 10] = sourceAddress[2];
-		response[Header.LENGTH + 11] = sourceAddress[3];
+		
+		for (int i = 0; i < sourceAddress.length; i++) {
+			response[Header.LENGTH + 8 + i] = sourceAddress[i];
+		}
 	}
 
 	private byte[] buildErrorResponse(byte[] request, int responseCode, String reason) {

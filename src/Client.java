@@ -128,7 +128,7 @@ public class Client extends Thread {
 	 * @return byte array of STUN message.
 	 */
 	private byte[] prepareRequest() {
-		byte[] request = new byte[Header.LENGTH + Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS_LENGTH];
+		byte[] request = new byte[Header.LENGTH + Header.TYPE_LENGTH_VALUE + Header.MAPPED_IPV4_ADDRESS_LENGTH];
 
 		logger.log(Level.FINE, "StunClient: asking STUN server " + serverAddress.getAddress() + ":" + serverAddress.getPort() 
 				+ " to get mapping for " + datagramSocket.getLocalAddress() +":" + datagramSocket.getLocalPort());
@@ -136,7 +136,7 @@ public class Client extends Thread {
 		addTypeAndLengthTo(request);		
 		addMagicCookieTo(request);
 		addTransactionIDTo(request);
-		addContentTo(request);
+		//addContentTo(request);
 		
 		return request;
 	}
@@ -162,7 +162,7 @@ public class Client extends Thread {
 	
 	public void addTypeAndLengthTo(byte[] request) {
 		request[1] = (byte) Header.BINDING_REQUEST;
-		request[3] = (byte) Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS_LENGTH;
+		request[3] = (byte) Header.TYPE_LENGTH_VALUE + Header.MAPPED_IPV4_ADDRESS_LENGTH;
 	}
 	
 	/**
@@ -204,7 +204,7 @@ public class Client extends Thread {
 		int myPort = datagramSocket.getLocalPort();
 		
 		request[21] = Header.MAPPED_ADDRESS;
-		request[23] = Header.MAPPED_ADDRESS_LENGTH;
+		request[23] = Header.MAPPED_IPV4_ADDRESS_LENGTH;
 
 		request[25] = 1; //address Family. Only serving IPv4
 

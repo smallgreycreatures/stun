@@ -31,7 +31,7 @@ public class Test {
 		}
 		
 		//Public STUN server available through the STUNTMAN project on stun.stunprotocol.org: 3478 
-		serverAddress = new InetSocketAddress("192.168.1.132", 3480);
+		serverAddress = new InetSocketAddress("stun.stunprotocol.org", 3478);
 		
 		try {
 			Client client = new Client(serverAddress, socket);

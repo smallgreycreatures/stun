@@ -18,9 +18,9 @@ public class TestServer {
 		String ipAddress = "192.168.1.132";
 		int port = 3478;
 		int clientPort = 4200;
-		Server.setLogLevel(Level.FINE);
-		Server.connectConsoleHandler();
-		Server.setConsoleHandlerLevel(Level.FINE);
+		//Server.setLogLevel(Level.FINE);
+		//Server.connectConsoleHandler();
+		//Server.setConsoleHandlerLevel(Level.FINE);
 		Server server = new Server();
 		try {
 			server.startServer();
@@ -32,10 +32,8 @@ public class TestServer {
 		
 		server.shutdown();
 		ArrayList<InetAddress> inetList = Server.getInetList();
-
-		for(InetAddress i: inetList) {
-			System.out.println(i);
-		}
+		
+		
 		
 		Server server2 = new Server(inetList.get(1), port);
 		
