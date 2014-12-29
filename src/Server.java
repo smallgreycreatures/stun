@@ -143,7 +143,7 @@ public class Server {
 		private InetAddress serverAddress;
 
 		public TCPListener(int port) throws IOException {
-			logger.log(Level.FINE, "Starting ServerSocket listener nr "+ (port - 3478) + " on port " + port);
+			logger.log(Level.FINE, "Starting ServerSocket listener nr "+ ((port - 3478)/2) + " on port " + port);
 			this.serverPort = port;
 
 			try {
@@ -162,7 +162,7 @@ public class Server {
 		 * @throws IOException
 		 */
 		public TCPListener(int port, InetAddress serverAddress) throws IOException {
-			logger.log(Level.FINE, "Starting TCP listener nr " + (port - 3478) + "on address " + serverAddress + ":" + port);
+			logger.log(Level.FINE, "Starting TCP listener nr " + ((port - 3478)/2) + "on address " + serverAddress + ":" + port);
 			this.serverPort = port;
 			this.serverAddress = serverAddress;
 
@@ -188,7 +188,7 @@ public class Server {
 
 				} catch (IOException e) {
 					running = false;
-					logger.log(Level.FINE, "IOException for ServerSocket - will be thrown while shutting down " + e.getMessage());
+					logger.log(Level.FINE, "IOException for ServerSocket - " + e.getMessage());
 				}
 			}
 		}
@@ -201,7 +201,7 @@ public class Server {
 		private InetAddress serverAddress;
 
 		public UDPListener(int port) throws IOException {
-			logger.log(Level.FINE, "Starting UDP listener nr "+ (port - 3478) + " on port " + port);
+			logger.log(Level.FINE, "Starting UDP listener nr "+ ((port - 3478)/2) + " on port " + port);
 			this.serverPort = port;
 
 			try {
@@ -220,7 +220,7 @@ public class Server {
 		 * @throws IOException
 		 */
 		public UDPListener(int port, InetAddress serverAddress) throws IOException {
-			logger.log(Level.FINE, "Starting UDP listener nr " + (port - 3478) + "on address " + serverAddress + ":" + port);
+			logger.log(Level.FINE, "Starting UDP listener nr " + ((port - 3478)/2) + "on address " + serverAddress + ":" + port);
 			this.serverPort = port;
 			this.serverAddress = serverAddress;
 
@@ -246,7 +246,7 @@ public class Server {
 					processRequest(socket, packet);
 				} catch (IOException e) {
 					running = false;
-					logger.log(Level.FINE, "IOException for UDP Socket - will be thrown while shutting down " + e.getMessage());
+					logger.log(Level.FINE, "IOException for UDP Socket - " + e.getMessage());
 				}
 			}
 			logger.log(Level.FINE,"Thread " + (serverPort - 3478) + " out of running");
