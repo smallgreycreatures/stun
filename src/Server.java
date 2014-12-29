@@ -170,6 +170,7 @@ public class Server {
 					logger.log(Level.FINE, "IOException - will be thrown while shutting down " + e.getMessage());
 				}
 			}
+			System.out.println("Thread " + (serverPort - 3478) + " out of running");
 		}
 	}
 	public void printResponse(byte[] request) {

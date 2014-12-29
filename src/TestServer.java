@@ -8,10 +8,11 @@ import java.util.logging.Level;
 
 
 public class TestServer {
-
+	//Public STUN server available through the STUNTMAN project on stun.stunprotocol.org: 3478
+	
 	public TestServer() {
 
-	}
+	} 
 
 	public void testServer() {
 		String ipAddress = "192.168.1.132";
@@ -41,13 +42,13 @@ public class TestServer {
 		try {
 			server2.startServer();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
+
 			e.printStackTrace();
 		}
 		
 		testClient(ipAddress, port, clientPort+1);
 		
-		server.shutdown();
+		server2.shutdown();
 		
 		System.out.println("SUCCESS!");
 	}
@@ -69,7 +70,6 @@ public class TestServer {
 			
 			System.out.println("Your public address is: " + address);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
