@@ -35,7 +35,7 @@ public class Test {
 			Client client = new Client(serverAddress, socket);
 			client.start();
 			InetSocketAddress address = client.getMappedAddress();
-			System.out.println("Final address:" + address.toString());
+			System.out.println("Your global address is:" + address.toString());
 		} catch (IOException e) {
 
 			e.printStackTrace();

@@ -79,7 +79,7 @@ public class Server {
 				+ "Packet Lenght: " + length + "\n");
 
 
-		System.out.println(sb.toString());
+		//System.out.println(sb.toString());
 
 
 	}
@@ -164,7 +164,6 @@ public class Server {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
 	}
 
 	/**
@@ -204,7 +203,7 @@ public class Server {
 	}
 
 	private byte[] buildBindingResponse(InetSocketAddress isa, byte[] request, int length) {
-		logger.log(Level.INFO, "Building Binding Response");
+		logger.log(Level.FINE, "Building Binding Response");
 
 		byte[] response = new byte[Header.LENGTH + Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS_LENGTH
 		                           + Header.TYPE_LENGTH_VALUE + Header.CHANGED_ADDRESS_LENGTH];
@@ -283,9 +282,9 @@ public class Server {
 
 
 	public static void main(String[]args) {
-		setLogLevel(Level.FINE);
-		connectConsoleHandler();
-		setConsoleHandlerLevel(Level.FINE);
+		//setLogLevel(Level.FINE);
+		//connectConsoleHandler();
+		//setConsoleHandlerLevel(Level.FINE);
 		
 		Server server = new Server();
 
@@ -295,53 +294,11 @@ public class Server {
 			System.out.println("IOException " + e.getMessage());
 			System.exit(1);
 		}
-		System.out.println("Server started");
+		logger.log(Level.INFO, "Server started");
 		try {
 			Thread.sleep(1000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		//server.test();
-
 	}
-
-	public void test() {
-		System.out.println("Starting test");
-		DatagramSocket socket = null;
-
-		try { 
-			socket = new DatagramSocket();
-		} catch (SocketException e) {
-			System.out.println(e.getMessage());
-			System.exit(1);
-		}
-
-		byte[] request = new byte[Header.LENGTH];
-
-		request[1] = 1;
-
-		for (int i = 0; i < 16; i++) {
-			request[4 + i] = (byte) i;
-		}
-		DatagramPacket packet = null;
-
-		try {
-
-			packet = new DatagramPacket(request, request.length, InetAddress.getLocalHost(), serverPort);
-		} catch (UnknownHostException e) {
-			System.out.println("Can't get localhost");
-			System.exit(1);
-		}
-
-		try {
-			socket.send(packet);
-			System.out.println("packet sent");
-			if (logger.isLoggable(Level.FINEST)) {
-				Header.dump("Sent stun binding request to " + packet.getAddress() + ": " + packet.getPort(), request, 0, request.length);
-			}
-		} catch (IOException e) {
-			System.out.println("Unable to send STUN binding request! " + e.getMessage());
-		}
-	}
-
 }

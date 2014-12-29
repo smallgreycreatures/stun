@@ -7,6 +7,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.security.SecureRandom;
+import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -14,7 +15,8 @@ import java.util.logging.Logger;
 public class Client extends Thread {
 
 	private static final Logger logger = Logger.getLogger(Client.class.getName());
-
+	private static ConsoleHandler consoleHandler = new ConsoleHandler();
+	
 	private static final int TIMEOUT = 500;
 
 	private int retries = 5;
@@ -25,7 +27,7 @@ public class Client extends Thread {
 	private DataInputStream input;
 
 	private InetSocketAddress mappedAddress;
-	//private ConsoleHandler consoleHandler = new ConsoleHandler();
+	
 
 	private boolean done;
 
@@ -34,10 +36,21 @@ public class Client extends Thread {
 
 		this.serverAddress = serverAddress;
 		this.datagramSocket = datagramSocket;
-		//logger.addHandler(consoleHandler);
-		System.out.println("Starting stun client to " + serverAddress);
+		logger.log(Level.FINE, "Starting stun client on " + serverAddress);
 
 
+	}
+	
+	public static void connectConsoleHandler() {
+		logger.addHandler(consoleHandler);
+	}
+
+	public static void setLogLevel(Level newLevel) {
+		logger.setLevel(newLevel);
+	}
+
+	public static void setConsoleHandlerLevel(Level newLevel) {
+		consoleHandler.setLevel(newLevel);
 	}
 
 	public InetSocketAddress getMappedAddress() throws IOException {
@@ -61,7 +74,7 @@ public class Client extends Thread {
 			throw new IOException(sb.toString());
 		}
 
-		logger.info("mapped address is " + mappedAddress);
+		logger.log(Level.FINE, "mapped address is " + mappedAddress);
 
 		return mappedAddress;
 	}
@@ -74,7 +87,7 @@ public class Client extends Thread {
 	public void run() {
 		int socketTimeout = TIMEOUT;
 
-		logger.info("using STUN server " + serverAddress);
+		logger.log(Level.FINE, "using STUN server " + serverAddress);
 
 		try {
 			if (datagramSocket != null) {
@@ -85,7 +98,7 @@ public class Client extends Thread {
 
 				//Prepare and send stun request
 				try {
-					logger.info("Sending STUN request");
+					logger.log(Level.FINE, "Sending STUN request");
 					byte[] request = prepareRequest();
 					send(request);
 				} catch (IOException e) {
@@ -100,7 +113,8 @@ public class Client extends Thread {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-
+				
+				//If time out just try again after *2
 				socketTimeout = socketTimeout*2;
 				datagramSocket.setSoTimeout(socketTimeout);
 			} 
@@ -108,7 +122,6 @@ public class Client extends Thread {
 			e.printStackTrace();
 		}
 		done();
-		System.out.println("Out of loop");
 	}
 	
 	/**
@@ -142,10 +155,10 @@ public class Client extends Thread {
 
 		DatagramPacket packet = new DatagramPacket(request, request.length, serverAddress.getAddress(), serverAddress.getPort());
 
-		System.out.println("local addr " + datagramSocket.getLocalAddress() + " local port: " + datagramSocket.getLocalPort());
+		logger.log(Level.FINER, "local addr " + datagramSocket.getLocalAddress() + " local port: " + datagramSocket.getLocalPort());
 		datagramSocket.send(packet);
 
-		System.out.println("Packet sent! Length: " + packet.getLength());
+		logger.log(Level.FINE, "Packet sent! Length: " + packet.getLength());
 	}
 	
 	public void addTypeAndLengthTo(byte[] request) {
@@ -208,7 +221,7 @@ public class Client extends Thread {
 	}
 	
 	private void waitForResponse() throws IOException, SocketTimeoutException {
-		System.out.println("Waiting for response");
+		logger.log(Level.FINE, "Waiting for response");
 		byte[] response = new byte[1000];
 
 		for (int i = 0; i < 50; i++) {
@@ -217,24 +230,24 @@ public class Client extends Thread {
 			if (datagramSocket != null) {
 				DatagramPacket packet = new DatagramPacket(response, response.length);
 				datagramSocket.receive(packet);
-				System.out.println("packet recieved");
+				logger.log(Level.FINE, "packet recieved");
 				length = packet.getLength();
 			} else {
 				length = input.read(response);
 			}
 
-			System.out.println("Got response! " + length + " local address " + datagramSocket.getLocalAddress()
+			logger.log(Level.FINE, "Got response! " + length + " local address " + datagramSocket.getLocalAddress()
 					+ " local port " + datagramSocket.getLocalPort());
 
 			int type = (int) ((response[0] << 8 & 0xff00) | (response[1] & 0xff));
 
 			if (type == Header.BINDING_RESPONSE) {
-				System.out.println("Setting mappedAddress");
+				logger.log(Level.FINE, "Setting mappedAddress");
 				mappedAddress = Header.getAddress(response, Header.MAPPED_ADDRESS);
 				return;
 			}
 
-			logger.info("BAD STUN response, length " + length + " TCP " + (input != null));
+			logger.log(Level.WARNING, "BAD STUN response, length " + length + " TCP " + (input != null));
 		}
 		throw new SocketTimeoutException("BAD STUN RESPONSE");
 	}
