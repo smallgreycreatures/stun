@@ -25,13 +25,13 @@ public class Test {
 	public void process() {
 
 		try {
-			socket = new DatagramSocket(4200);
+			socket = new DatagramSocket(4212);
 		} catch (SocketException e1) {
 			e1.printStackTrace();
 		}
 		
 		//Public STUN server available through the STUNTMAN project on stun.stunprotocol.org: 3478 
-		serverAddress = new InetSocketAddress("192.168.1.132", 3478);
+		serverAddress = new InetSocketAddress("192.168.1.132", 3480);
 		
 		try {
 			Client client = new Client(serverAddress, socket);

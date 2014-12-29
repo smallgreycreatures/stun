@@ -18,11 +18,15 @@ import java.util.logging.Logger;
 public class Server {
 	private static Logger logger = Logger.getLogger(Server.class.getName());
 	private static ConsoleHandler consoleHandler = new ConsoleHandler();
-
+	
 	private static int serverPort = 3478;
 	private static InetAddress serverAddress;
 
+	private int nrOfThreads;
 	private ExecutorService executorService;
+	
+	private UDPListener[] listeners;
+	
 	
 	/**
 	 * Empty constructor if you want to use default InetAddress and STUN port 3478
@@ -30,7 +34,7 @@ public class Server {
 	public Server() {
 
 	}
-	
+
 	/**
 	 * Constructor if you want to specify which network interface to use and which port
 	 * Port number 3478 is Strongly Recommended!
@@ -43,12 +47,23 @@ public class Server {
 	}
 
 	public void startServer() throws IOException {
-		executorService = Executors.newFixedThreadPool(nrOfThreads());
-
+		this.nrOfThreads = nrOfThreads();
+		listeners = new UDPListener[nrOfThreads];
 		
-		UDPListener ul1 = new UDPListener(serverPort, serverAddress);
-		ul1.run();
+		executorService = Executors.newFixedThreadPool(nrOfThreads);
+		
+		for (int i = 0; i < nrOfThreads; i++) {
 
+			if (serverAddress == null) {
+				listeners[i] = new UDPListener(serverPort+i);
+			} else { 
+				listeners[i] = new UDPListener(serverPort+i, serverAddress);
+			}
+		}
+		
+		for (int i = 0; i < listeners.length; i++) {
+			executorService.execute(listeners[i]);
+		}
 	}
 
 	public static void connectConsoleHandler() {
@@ -101,7 +116,7 @@ public class Server {
 
 		return (availableCPUS > 4) ? availableCPUS : 4;
 	}
-
+	
 	class UDPListener implements Runnable {
 
 		private DatagramSocket socket;
@@ -109,7 +124,7 @@ public class Server {
 		private InetAddress serverAddress;
 
 		public UDPListener(int port) throws IOException {
-			logger.log(Level.FINE, "Starting UDP listener on port " + port);
+			logger.log(Level.FINE, "Starting UDP listener nr "+ (port - 3478) + " on port " + port);
 			this.serverPort = port;
 
 			try {
@@ -128,12 +143,12 @@ public class Server {
 		 * @throws IOException
 		 */
 		public UDPListener(int port, InetAddress serverAddress) throws IOException {
-			logger.log(Level.FINE, "Starting UDP listener on address " + serverAddress + ":" + port);
+			logger.log(Level.FINE, "Starting UDP listener nr " + (port - 3478) + "on address " + serverAddress + ":" + port);
 			this.serverPort = port;
 			this.serverAddress = serverAddress;
 
 			try {
-				
+
 				socket = new DatagramSocket(serverPort, serverAddress);
 			} catch (SocketException e) {
 				throw new IOException("Can't create DatagramSocket: " + e.getMessage());
@@ -141,7 +156,8 @@ public class Server {
 		}
 
 		public void run() {
-			while (true) {
+			boolean running = true;
+			while (running) {
 				try {
 					byte[] buffer = new byte[1024];
 					DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
@@ -150,11 +166,11 @@ public class Server {
 					logger.log(Level.FINE, "Packet recieved.");
 					processRequest(socket, packet);
 				} catch (IOException e) {
-					e.printStackTrace();
+					running = false;
+					logger.log(Level.FINE, "IOException - will be thrown while shutting down " + e.getMessage());
 				}
 			}
 		}
-
 	}
 	public void printResponse(byte[] request) {
 
@@ -369,11 +385,23 @@ public class Server {
 
 		return response;
 	}
+	
+	public void shutdown() {
+	logger.log(Level.FINE, "Shutting down thread pool");
 
+		if (executorService != null) {
+			executorService.shutdown();
+			
+			for (int i = 0; i < nrOfThreads; i++) {
+				listeners[i].socket.close();
+			
+			}
+		}
+		
+	}
+	
 	public static void main(String[]args) {
-		//setLogLevel(Level.FINE);
-		//connectConsoleHandler();
-		//setConsoleHandlerLevel(Level.FINE);
+
 
 		Server server = new Server();
 

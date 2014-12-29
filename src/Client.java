@@ -31,8 +31,7 @@ public class Client extends Thread {
 
 	private boolean done;
 
-	public Client(InetSocketAddress serverAddress, DatagramSocket datagramSocket) throws IOException {
-
+	public Client(InetSocketAddress serverAddress, DatagramSocket datagramSocket) {
 
 		this.serverAddress = serverAddress;
 		this.datagramSocket = datagramSocket;
