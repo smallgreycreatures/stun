@@ -40,8 +40,6 @@ public class TestServer {
 		
 		ArrayList<InetAddress> inetList = Server.getInetList();
 		
-		
-		
 		Server server2 = new Server(inetList.get(1), port);
 		
 		try {
@@ -69,7 +67,7 @@ public class TestServer {
 			
 			TCPClient client = new TCPClient(socket);
 			
-			client.start();
+			client.run();
 			
 			InetSocketAddress address = client.getMappedAddress();
 			System.out.println("Your global TCP address is:" + address.toString());
@@ -90,8 +88,8 @@ public class TestServer {
 			e1.printStackTrace();
 		}
 
-		Client client = new Client(serverAddress, socket);
-		client.start();
+		UDPClient client = new UDPClient(serverAddress, socket);
+		client.run();
 		
 		try {
 			InetSocketAddress address = client.getMappedAddress();
@@ -100,8 +98,6 @@ public class TestServer {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
-
 	}
 
 	public static void main(String[]args) {

@@ -1,21 +1,18 @@
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.security.SecureRandom;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
-public class TCPClient extends Thread {
+public class TCPClient implements Runnable {
 
-	private static final Logger logger = Logger.getLogger(Client.class.getName());
+	private static final Logger logger = Logger.getLogger(TCPClient.class.getName());
 	private static ConsoleHandler consoleHandler = new ConsoleHandler();
 
 	private static final int TIMEOUT = 500;

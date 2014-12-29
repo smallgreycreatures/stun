@@ -1,6 +1,5 @@
 import java.io.IOException;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
@@ -22,14 +21,14 @@ public class Test {
 	public void testTCP() {
 
 		try {
-			socket = new Socket("192.168.1.132", 3479);
+			socket = new Socket("stun.stunprotocol.org", 3478);
 			
 			TCPClient client = new TCPClient(socket);
 			
-			client.start();
+			client.run();
 			
 			InetSocketAddress address = client.getMappedAddress();
-			System.out.println("Your global address is:" + address.toString());
+			System.out.println("Your global TCP address is:" + address.toString());
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -49,10 +48,10 @@ public class Test {
 		serverAddress = new InetSocketAddress("192.168.1.132", 3478);
 		
 		try {
-			Client client = new Client(serverAddress, datagramSocket);
-			client.start();
+			UDPClient client = new UDPClient(serverAddress, datagramSocket);
+			client.run();
 			InetSocketAddress address = client.getMappedAddress();
-			System.out.println("Your global address is:" + address.toString());
+			System.out.println("Your global UDP address is:" + address.toString());
 		} catch (IOException e) {
 
 			e.printStackTrace();

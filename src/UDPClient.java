@@ -4,15 +4,14 @@ import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.security.SecureRandom;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
-public class UDPClient extends Thread {
+public class UDPClient implements Runnable {
 
-	private static final Logger logger = Logger.getLogger(Client.class.getName());
+	private static final Logger logger = Logger.getLogger(UDPClient.class.getName());
 	private static ConsoleHandler consoleHandler = new ConsoleHandler();
 
 	private static final int TIMEOUT = 500;

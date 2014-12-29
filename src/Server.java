@@ -1,8 +1,6 @@
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Inet6Address;
@@ -26,8 +24,8 @@ public class Server {
 	private static Logger logger = Logger.getLogger(Server.class.getName());
 	private static ConsoleHandler consoleHandler = new ConsoleHandler();
 
-	private static int serverPort = 3478;
-	private static InetAddress serverAddress;
+	private int serverPort = 3478;
+	private InetAddress serverAddress;
 
 	private int nrOfThreads;
 	private ExecutorService executorService;
@@ -140,12 +138,9 @@ public class Server {
 
 	class TCPListener implements Runnable {
 		private ServerSocket serverSocket;
-		private int serverPort;
-		private InetAddress serverAddress;
 
-		public TCPListener(int port) throws IOException {
-			logger.log(Level.FINE, "Starting ServerSocket listener nr "+ ((port - 3478)/2) + " on port " + port);
-			this.serverPort = port;
+		public TCPListener(int serverPort) throws IOException {
+			logger.log(Level.FINE, "Starting ServerSocket listener nr "+ ((serverPort - 3478)/2) + " on port " + serverPort);
 
 			try {
 				serverSocket = new ServerSocket(serverPort);
@@ -157,15 +152,13 @@ public class Server {
 		}
 
 		/**
-		 * Alternative constructor if you want to specify which of your inet address you want to use
+		 * Alternative constructor if you want to specify which of your addresses you want to use
 		 * @param port
 		 * @param serverAddress
 		 * @throws IOException
 		 */
-		public TCPListener(int port, InetAddress serverAddress) throws IOException {
-			logger.log(Level.FINE, "Starting TCP listener nr " + ((port - 3478)/2) + "on address " + serverAddress + ":" + port);
-			this.serverPort = port;
-			this.serverAddress = serverAddress;
+		public TCPListener(int serverPort, InetAddress serverAddress) throws IOException {
+			logger.log(Level.FINE, "Starting TCP listener nr " + ((serverPort - 3478)/2) + "on address " + serverAddress + ":" + serverPort);
 
 			try {
 				serverSocket = new ServerSocket(serverPort, 50, serverAddress);
@@ -198,12 +191,9 @@ public class Server {
 	class UDPListener implements Runnable {
 
 		private DatagramSocket socket;
-		private int serverPort;
-		private InetAddress serverAddress;
 
-		public UDPListener(int port) throws IOException {
-			logger.log(Level.FINE, "Starting UDP listener nr "+ ((port - 3478)/2) + " on port " + port);
-			this.serverPort = port;
+		public UDPListener(int serverPort) throws IOException {
+			logger.log(Level.FINE, "Starting UDP listener nr "+ ((serverPort - 3478)/2) + " on port " + serverPort);
 
 			try {
 				socket = new DatagramSocket(serverPort);
@@ -211,19 +201,16 @@ public class Server {
 			} catch (SocketException e) {
 				throw new IOException("Can't create DatagramSocket: " + e.getMessage());
 			}
-
 		}
 
 		/**
-		 * Alternative constructor if you want to specify which of your inet address you want to use
+		 * Alternative constructor if you want to specify which of your addresses you want to use
 		 * @param port
 		 * @param serverAddress
 		 * @throws IOException
 		 */
-		public UDPListener(int port, InetAddress serverAddress) throws IOException {
-			logger.log(Level.FINE, "Starting UDP listener nr " + ((port - 3478)/2) + "on address " + serverAddress + ":" + port);
-			this.serverPort = port;
-			this.serverAddress = serverAddress;
+		public UDPListener(int serverPort, InetAddress serverAddress) throws IOException {
+			logger.log(Level.FINE, "Starting UDP listener nr " + ((serverPort - 3478)/2) + "on address " + serverAddress + ":" + serverPort);
 
 			try {
 
