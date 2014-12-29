@@ -1,10 +1,15 @@
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -19,16 +24,16 @@ import java.util.logging.Logger;
 public class Server {
 	private static Logger logger = Logger.getLogger(Server.class.getName());
 	private static ConsoleHandler consoleHandler = new ConsoleHandler();
-	
+
 	private static int serverPort = 3478;
 	private static InetAddress serverAddress;
 
 	private int nrOfThreads;
 	private ExecutorService executorService;
-	
-	private UDPListener[] listeners;
-	
-	
+
+	private UDPListener[] udpListeners;
+	private TCPListener[] tcpListeners;
+
 	/**
 	 * Empty constructor if you want to use default InetAddress and STUN port 3478
 	 */
@@ -49,21 +54,35 @@ public class Server {
 
 	public void startServer() throws IOException {
 		this.nrOfThreads = nrOfThreads();
-		listeners = new UDPListener[nrOfThreads];
-		
 		executorService = Executors.newFixedThreadPool(nrOfThreads);
+
+		udpListeners = new UDPListener[nrOfThreads];
+		tcpListeners = new TCPListener[nrOfThreads];
 		
 		for (int i = 0; i < nrOfThreads; i++) {
-
-			if (serverAddress == null) {
-				listeners[i] = new UDPListener(serverPort+i);
-			} else { 
-				listeners[i] = new UDPListener(serverPort+i, serverAddress);
+			
+			if ((i % 2) == 0) {
+				if (serverAddress != null)
+					udpListeners[i] = new UDPListener(serverPort+i, serverAddress);
+				else
+					udpListeners[i] = new UDPListener(serverPort+i);
+				
+			} else {
+				if (serverAddress != null) 
+					tcpListeners[i] = new TCPListener(serverPort+i, serverAddress);
+				else	
+					tcpListeners[i] = new TCPListener(serverPort+i);
+				
 			}
 		}
 		
-		for (int i = 0; i < listeners.length; i++) {
-			executorService.execute(listeners[i]);
+		for (int i = 0; i < nrOfThreads; i++) {
+			
+			if ((i % 2) == 0) {
+				executorService.execute(udpListeners[i]);
+			} else {
+				executorService.execute(tcpListeners[i]);
+			}
 		}
 	}
 
@@ -117,7 +136,64 @@ public class Server {
 
 		return (availableCPUS > 4) ? availableCPUS : 4;
 	}
-	
+
+	class TCPListener implements Runnable {
+		private ServerSocket serverSocket;
+		private int serverPort;
+		private InetAddress serverAddress;
+
+		public TCPListener(int port) throws IOException {
+			logger.log(Level.FINE, "Starting ServerSocket listener nr "+ (port - 3478) + " on port " + port);
+			this.serverPort = port;
+
+			try {
+				serverSocket = new ServerSocket(serverPort);
+
+			} catch (SocketException e) {
+				throw new IOException("Can't create ServerSocket: " + e.getMessage());
+			}
+
+		}
+
+		/**
+		 * Alternative constructor if you want to specify which of your inet address you want to use
+		 * @param port
+		 * @param serverAddress
+		 * @throws IOException
+		 */
+		public TCPListener(int port, InetAddress serverAddress) throws IOException {
+			logger.log(Level.FINE, "Starting TCP listener nr " + (port - 3478) + "on address " + serverAddress + ":" + port);
+			this.serverPort = port;
+			this.serverAddress = serverAddress;
+
+			try {
+				serverSocket = new ServerSocket(serverPort, 50, serverAddress);
+
+			} catch (SocketException e) {
+				throw new IOException("Can't create ServerSocket: " + e.getMessage());
+			}
+		}
+
+		public void run() {
+			boolean running = true;
+
+			while (running) {
+				try {
+					logger.log(Level.FINE, "Waiting for requests on address "+ serverSocket.getInetAddress() + ":" + serverSocket.getLocalPort() +" in run");
+
+					Socket socket = serverSocket.accept();
+					logger.log(Level.FINE, "Connection recieved");
+
+					processRequest(socket);
+
+				} catch (IOException e) {
+					running = false;
+					logger.log(Level.FINE, "IOException for ServerSocket - will be thrown while shutting down " + e.getMessage());
+				}
+			}
+		}
+	}
+
 	class UDPListener implements Runnable {
 
 		private DatagramSocket socket;
@@ -162,13 +238,15 @@ public class Server {
 				try {
 					byte[] buffer = new byte[1024];
 					DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-					logger.log(Level.FINE, "Waiting for request on address "+ socket.getLocalAddress().getHostAddress() + ":" + socket.getLocalPort() +" in run");
+					logger.log(Level.FINE, "Waiting for requests on address "+ socket.getLocalAddress().getHostAddress() + ":" + socket.getLocalPort() +" in run");
+
 					socket.receive(packet);
 					logger.log(Level.FINE, "Packet recieved.");
+
 					processRequest(socket, packet);
 				} catch (IOException e) {
 					running = false;
-					logger.log(Level.FINE, "IOException - will be thrown while shutting down " + e.getMessage());
+					logger.log(Level.FINE, "IOException for UDP Socket - will be thrown while shutting down " + e.getMessage());
 				}
 			}
 			logger.log(Level.FINE,"Thread " + (serverPort - 3478) + " out of running");
@@ -191,13 +269,14 @@ public class Server {
 
 
 	}
+
 	public void processRequest(DatagramSocket socket, DatagramPacket packet) {
 		logger.log(Level.FINE, "Processing request.");
 		byte[] request = packet.getData();
 		int length = packet.getLength();
 
 		if (checkMagicCookieFor(request)) {
-			
+
 			InetSocketAddress isa = (InetSocketAddress) packet.getSocketAddress();
 
 			logger.log(Level.FINE, "Got UDP Stun request on socket "
@@ -222,6 +301,39 @@ public class Server {
 		} else {
 			logger.log(Level.FINE, "magic cookie not ok, Probably not a STUN request. Not much to do");
 		}
+	}
+
+	public void processRequest(Socket socket) throws IOException {
+		InputStream input = socket.getInputStream();
+		OutputStream output = socket.getOutputStream();
+
+		byte[] request = streamToByteArray(input);
+
+		if (checkMagicCookieFor(request)) {
+
+			InetSocketAddress isa = new InetSocketAddress(socket.getInetAddress(), socket.getPort());
+			logger.log(Level.FINE, "Message received from " + isa);
+
+			byte[] response = buildResponse(isa, request, request.length);
+
+			output.write(response);
+			logger.log(Level.FINE, "Message sent to " + isa);
+		}
+
+	}
+
+	private byte[] streamToByteArray(InputStream is) throws IOException {
+		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+		byte[] data = new byte[1024];
+		int read;
+
+		while ((read = is.read(data, 0, data.length)) != -1) {
+			buffer.write(data, 0, read);
+		}
+
+		buffer.flush();
+
+		return buffer.toByteArray();
 	}
 
 	private boolean checkMagicCookieFor(byte[] request) {
@@ -301,7 +413,7 @@ public class Server {
 		int messageType = checkHeaderErrors(request, length);
 
 		if (messageType == 1) {
-			return buildBindingResponse(isa, request, length);
+			return buildBindingResponse(isa, request);
 		} else {
 			if (messageType == 400) 
 				return buildErrorResponse(request, messageType, "BAD REQUEST - Header to small");
@@ -310,9 +422,9 @@ public class Server {
 		}
 	}
 
-	private byte[] buildBindingResponse(InetSocketAddress isa, byte[] request, int length) {
+	private byte[] buildBindingResponse(InetSocketAddress isa, byte[] request) {
 		logger.log(Level.FINE, "Building Binding Response");
-		
+
 		int ipFamily = ipFamilyChecker(isa);
 		int mappedAttributeLength = ((ipFamily == 2)? Header.MAPPED_IPV6_ADDRESS_LENGTH: Header.MAPPED_IPV4_ADDRESS_LENGTH);
 		byte[] response = new byte[Header.LENGTH + Header.TYPE_LENGTH_VALUE + mappedAttributeLength];
@@ -329,7 +441,7 @@ public class Server {
 
 		return response;
 	}
-	
+
 	/**
 	 * Method to determine if the address is an instance of IPv4 or IPv6
 	 * @param isa
@@ -337,11 +449,11 @@ public class Server {
 	 */
 	private int ipFamilyChecker(InetSocketAddress isa) {
 		InetAddress ia = isa.getAddress();
-		
+
 		return (ia instanceof Inet6Address) ? 2 : 1;
 	}
-	
-	
+
+
 	private void setHeaderTo(byte[] response, int attributeLength) {
 		response[0] = 1;
 		response[3] = (byte) (Header.TYPE_LENGTH_VALUE + attributeLength);
@@ -358,7 +470,7 @@ public class Server {
 		int sourcePort = isa.getPort();
 
 		response[Header.LENGTH + 5] = (byte) ipFamily;
-		
+
 		response[Header.LENGTH + 6] = (byte) (sourcePort >> 8);
 		response[Header.LENGTH + 7] = (byte) (sourcePort & 0xff);
 
@@ -366,7 +478,7 @@ public class Server {
 
 	private void addSourceAddressTo(byte[] response, InetSocketAddress isa) {
 		byte[] sourceAddress = isa.getAddress().getAddress();
-		
+
 		for (int i = 0; i < sourceAddress.length; i++) {
 			response[Header.LENGTH + 8 + i] = sourceAddress[i];
 		}
@@ -396,21 +508,25 @@ public class Server {
 
 		return response;
 	}
-	
-	public void shutdown() {
-	logger.log(Level.FINE, "Shutting down thread pool.");
+
+	public void shutdown() throws IOException {
+		logger.log(Level.FINE, "Shutting down thread pool.");
 
 		if (executorService != null) {
 			executorService.shutdown();
-			
+
 			for (int i = 0; i < nrOfThreads; i++) {
-				listeners[i].socket.close();
-			
+				
+				if ((i % 2 ) == 0) 
+					udpListeners[i].socket.close();
+				
+				else
+					tcpListeners[i].serverSocket.close();
 			}
 		}
-		
+
 	}
-	
+
 	public static void main(String[]args) {
 
 

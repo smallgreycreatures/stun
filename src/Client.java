@@ -1,8 +1,6 @@
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
@@ -110,7 +108,7 @@ public class Client extends Thread {
 					e.printStackTrace();
 				}
 
-				//If time out just try again after *2
+				//If time out just try again after t*2
 				socketTimeout = socketTimeout*2;
 				datagramSocket.setSoTimeout(socketTimeout);
 			} 
