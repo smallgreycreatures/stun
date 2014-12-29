@@ -16,6 +16,7 @@ public class TestServer {
 	public void testServer() {
 		String ipAddress = "192.168.1.132";
 		int port = 3478;
+		int clientPort = 4200;
 		Server.setLogLevel(Level.FINE);
 		Server.connectConsoleHandler();
 		Server.setConsoleHandlerLevel(Level.FINE);
@@ -26,7 +27,7 @@ public class TestServer {
 			e.printStackTrace();
 		}
 
-		testClient(ipAddress, port);
+		testClient(ipAddress, port, clientPort);
 		
 		server.shutdown();
 		ArrayList<InetAddress> inetList = Server.getInetList();
@@ -34,13 +35,28 @@ public class TestServer {
 		for(InetAddress i: inetList) {
 			System.out.println(i);
 		}
+		
+		Server server2 = new Server(inetList.get(1), port);
+		
+		try {
+			server2.startServer();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		testClient(ipAddress, port, clientPort+1);
+		
+		server.shutdown();
+		
+		System.out.println("SUCCESS!");
 	}
 
-	public void testClient(String ipAddress, int port) {
+	public void testClient(String ipAddress, int port, int clientPort) {
 		InetSocketAddress serverAddress = new InetSocketAddress(ipAddress, port);
 		DatagramSocket socket = null;
 		try {
-			socket = new DatagramSocket(4200);
+			socket = new DatagramSocket(clientPort);
 		} catch (SocketException e1) {
 			e1.printStackTrace();
 		}

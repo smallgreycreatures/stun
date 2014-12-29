@@ -387,7 +387,7 @@ public class Server {
 	}
 	
 	public void shutdown() {
-	logger.log(Level.FINE, "Shutting down thread pool");
+	logger.log(Level.FINE, "Shutting down thread pool.");
 
 		if (executorService != null) {
 			executorService.shutdown();
