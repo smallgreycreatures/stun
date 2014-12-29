@@ -3,48 +3,44 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Enumeration;
+import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
 public class Server {
-	private static final Logger logger = Logger.getLogger(Server.class.getName());
-
-	private static ArrayList<InetAddress> inetList;
-
-	//private DatagramSocket socket;
-
+	private static Logger logger = Logger.getLogger(Server.class.getName());
 	private static int serverPort = 3478;
-
-	public Server() {
-
-	}
+	private static ConsoleHandler consoleHandler = new ConsoleHandler();
 
 	public void startServer() throws IOException {
+		
 		UDPListener ul1 = new UDPListener(serverPort);
 		ul1.start();
 
-		System.out.println("Created");
 	}
-
+	
+	public static void connectConsoleHandler() {
+		logger.addHandler(consoleHandler);
+	}
 
 	public static void setLogLevel(Level newLevel) {
 		logger.setLevel(newLevel);
 	}
 
+	public static void setConsoleHandlerLevel(Level newLevel) {
+		consoleHandler.setLevel(newLevel);
+	}
+	
 	class UDPListener extends Thread {
 
 		private DatagramSocket socket;
 		private int serverPort;
 
 		public UDPListener(int port) throws IOException {
-			System.out.println("Starting udp listener");
+			logger.log(Level.FINE, "Starting udp listener");
 			this.serverPort = port;
 
 			try {
@@ -55,14 +51,13 @@ public class Server {
 
 		}
 		public void run() {
-			System.out.println("In run");
 			while (true) {
 				try {
-					byte[] buf = new byte[10000];
-					DatagramPacket packet = new DatagramPacket(buf, buf.length);
-					System.out.println("Waiting for request on address "+ socket.getLocalAddress().getHostAddress() + ":" + socket.getLocalPort() +" in run");
+					byte[] buffer = new byte[1024];
+					DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+					logger.log(Level.FINE, "Waiting for request on address "+ socket.getLocalAddress().getHostAddress() + ":" + socket.getLocalPort() +" in run");
 					socket.receive(packet);
-					System.out.println("packet recieved");
+					logger.log(Level.FINE, "Packet recieved.");
 					processRequest(socket, packet);
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -83,52 +78,53 @@ public class Server {
 		sb.append("Message type:" + messageType + "\n"
 				+ "Packet Lenght: " + length + "\n");
 
-		/*	if (request.length >= Header.LENGTH + Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS_LENGTH) {
-
-			//All the 0xff are here to convert from signed bits to unsigned bits becasue we don't need unsigned ones here
-			int port = (int) (((request[Header.LENGTH + Header.TYPE_LENGTH_VALUE + 2] << 8) & 0xff00) | (request[Header.TYPE_LENGTH_VALUE + 3] & 0xff ));
-
-			String privateAddress = "Private Address: " + (int) (request[Header.LENGTH + Header.TYPE_LENGTH_VALUE + 4] & 0xff)
-					+ (int) (request[Header.LENGTH + Header.TYPE_LENGTH_VALUE + 5] & 0xff)
-					+ (int) (request[Header.LENGTH + Header.TYPE_LENGTH_VALUE + 6] & 0xff)
-					+ (int) (request[Header.LENGTH + Header.TYPE_LENGTH_VALUE + 7] & 0xff);
-
-			sb.append(privateAddress + ":" +port);
-
-
-		}*/
 
 		System.out.println(sb.toString());
 
 
 	}
 	public void processRequest(DatagramSocket socket, DatagramPacket packet) {
-		logger.info("processRequest");
+		logger.log(Level.FINE, "Processing request.");
 		byte[] request = packet.getData();
 		int length = packet.getLength();
 
-		InetSocketAddress isa = (InetSocketAddress) packet.getSocketAddress();
+		if (checkMagicCookieFor(request)) {
 
-		logger.info("Got UDP Stun request on socket "
-				+ socket.getLocalAddress() + ":" + socket.getLocalPort()
-				+ " length " + length + " bytes " + " from " + isa);
-		//InetSocketAddress responseAddress = Header.getAddress(request, Header.RESPONSE_ADDRESS);
+			InetSocketAddress isa = (InetSocketAddress) packet.getSocketAddress();
 
-		byte[] response = buildResponse(isa, request, length);
-		printResponse(response);
-		/*
-		 * ChangeRequest - For alternating between servers in order to validate if the user
-		 * is behind a Symmetric NAT. Will try implementing this. 
-		 */
-		int changeRequest = Header.getChangeRequest(request);
+			logger.log(Level.FINE, "Got UDP Stun request on socket "
+					+ socket.getLocalAddress() + ":" + socket.getLocalPort()
+					+ " length " + length + " bytes " + " from " + isa);
 
-		if (!changeIP(changeRequest)) {
+			byte[] response = buildResponse(isa, request, length);
+			printResponse(response);
 
-			DatagramSocket responseSocket = changeSocket(socket, changeRequest, request, response);
-			packAndSendData(responseSocket, packet, response);
+			/*
+			 * ChangeRequest - For alternating between servers in order to validate if the user
+			 * is behind a Symmetric NAT. Will try implementing this. 
+			 */
+			int changeRequest = Header.getChangeRequest(request);
 
+			if (!changeIP(changeRequest)) {
+
+				DatagramSocket responseSocket = setSocket(socket, changeRequest, request, response);
+				packAndSendData(responseSocket, packet, response);
+
+			}
+		} else {
+			logger.log(Level.FINE, "magic cookie not ok, Probably not a STUN request. Not much to do");
 		}
+	}
 
+	private boolean checkMagicCookieFor(byte[] request) {
+
+		int magicCookie = 0x2112A442; //0x2112A442 = 10x554869826
+		int extractedCookie = (int) ((request[4] << 24 & 0xff000000) | (request[5] << 16 & 0xff0000) 
+				| (request[6] << 8 & 0xff00) | (request[7] & 0xff));
+
+		logger.log(Level.FINE, "magic cookie = incoming cookie "+ magicCookie + " = " + extractedCookie);
+
+		return (magicCookie == extractedCookie) ? true : false;
 	}
 
 	private boolean changeIP(int changeRequest) {
@@ -143,8 +139,8 @@ public class Server {
 			return false;
 		}
 	}
-	
-	private DatagramSocket changeSocket(DatagramSocket socket, int changeRequest, byte[] request, byte[] response) {
+
+	private DatagramSocket setSocket(DatagramSocket socket, int changeRequest, byte[] request, byte[] response) {
 
 		if ((changeRequest & Header.CHANGE_PORT_MASK) != 0) {
 			try {
@@ -170,7 +166,13 @@ public class Server {
 		}
 
 	}
-	
+
+	/**
+	 * checks if the STUN Header is okay
+	 * @param request
+	 * @param length
+	 * @return 1 if okay, otherwise STUN error code
+	 */
 	private int checkHeaderErrors(byte[] request, int length) {
 
 		if (length < Header.LENGTH) {
@@ -202,8 +204,8 @@ public class Server {
 	}
 
 	private byte[] buildBindingResponse(InetSocketAddress isa, byte[] request, int length) {
-		System.out.println("Buildeing Binding Response");
-		//Skapar datastrukturen för att kunna skicka tillbaka header, leverensaddressen samt den addressen vi ska ha
+		logger.log(Level.INFO, "Building Binding Response");
+
 		byte[] response = new byte[Header.LENGTH + Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS_LENGTH
 		                           + Header.TYPE_LENGTH_VALUE + Header.CHANGED_ADDRESS_LENGTH];
 
@@ -212,39 +214,39 @@ public class Server {
 		setHeaderTo(response);
 		setMappedTypeAndValueTo(response);
 
-		logger.fine("responding with " + isa);
+		logger.log(Level.FINE, "responding with " + isa);
 
-		//Dags att ordna med addressen!
 		addPortTo(response, isa);
 		addSourceAddressTo(response, isa);
 
 		return response;
 	}
+	
 	private void setHeaderTo(byte[] response) {
 		response[0] = 1;
 
 		response[3] = (byte) Header.TYPE_LENGTH_VALUE + Header.MAPPED_ADDRESS +
 				Header.TYPE_LENGTH_VALUE + Header.CHANGED_ADDRESS_LENGTH;
 	}
-	
+
 	private void setMappedTypeAndValueTo(byte[] response) {
 		response[Header.LENGTH + 1] = Header.MAPPED_ADDRESS;
 
 		response[Header.LENGTH + 3] = Header.MAPPED_ADDRESS_LENGTH;
-		
+
 		response[Header.LENGTH + 5] = 1; //Address family - only IPv4
 
 	}
-	
+
 	private void addPortTo(byte[] response, InetSocketAddress isa) {
-		
+
 		int sourcePort = isa.getPort();
-		
+
 		response[Header.LENGTH + 6] = (byte) (sourcePort >> 8);
 		response[Header.LENGTH + 7] = (byte) (sourcePort & 0xff);
-		
+
 	}
-	
+
 	private void addSourceAddressTo(byte[] response, InetSocketAddress isa) {
 		byte[] sourceAddress = isa.getAddress().getAddress();
 
@@ -253,7 +255,7 @@ public class Server {
 		response[Header.LENGTH + 10] = sourceAddress[2];
 		response[Header.LENGTH + 11] = sourceAddress[3];
 	}
-	
+
 	private byte[] buildErrorResponse(byte[] request, int responseCode, String reason) {
 
 		byte[] response = new byte[Header.LENGTH + Header.ERROR_CODE_LENGTH + reason.length()];
@@ -281,10 +283,10 @@ public class Server {
 
 
 	public static void main(String[]args) {
-		logger.fine("asd");
-		logger.toString();
-
-
+		setLogLevel(Level.FINE);
+		connectConsoleHandler();
+		setConsoleHandlerLevel(Level.FINE);
+		
 		Server server = new Server();
 
 		try {
@@ -297,10 +299,9 @@ public class Server {
 		try {
 			Thread.sleep(1000);
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		server.test();
+		//server.test();
 
 	}
 

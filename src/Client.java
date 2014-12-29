@@ -201,6 +201,7 @@ public class Client extends Thread {
 
 		byte[] address = myAddress.getAddress();
 		
+		//add address to byte[]
 		for (int i = 0; i < 4; i++) {
 			request[28+i] = address[i];
 		}
