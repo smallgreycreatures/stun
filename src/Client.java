@@ -32,7 +32,6 @@ public class Client extends Thread {
 		this.datagramSocket = datagramSocket;
 		logger.log(Level.FINE, "Starting stun client on " + serverAddress);
 
-
 	}
 
 	public static void connectConsoleHandler() {
