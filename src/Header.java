@@ -118,7 +118,7 @@ public class Header {
 			logger.log(Level.FINE, "Attribute length in Header:" + attributeLength);
 
 			if (type != desiredType) {
-				logger.finest("Skipping type " + type);
+				logger.log(Level.FINE, "Skipping type " + type);
 
 				offset += (TYPE_LENGTH_VALUE + attributeLength);
 				length -= (TYPE_LENGTH_VALUE + attributeLength);
@@ -126,30 +126,29 @@ public class Header {
 			}
 
 			if (attributeLength != MAPPED_IPV4_ADDRESS_LENGTH && attributeLength != MAPPED_IPV6_ADDRESS_LENGTH) {
-				logger.warning("Invalid Response Address Length");
+				logger.log(Level.WARNING, "Invalid Response Address Length");
 				return null;
 			}
 
 			int port = (int) (((request[offset + 6] << 8) & 0xff00) | (request[offset + 7] & 0xff));
 			logger.log(Level.FINE, "Port in Header: " + port);
-			InetAddress ia;
+			InetAddress inetAddress;
 
 			try {
 				byte [] address = new byte[4];
+				
+				for (int i = 0; i < address.length; i++) {
+					address[i] = request[offset + 8 + i];
+				}
 
-				address[0] = request[offset + 8];
-				address[1] = request[offset + 9];
-				address[2] = request[offset + 10];
-				address[3] = request[offset + 11];
-
-				ia = InetAddress.getByAddress(address);
+				inetAddress = InetAddress.getByAddress(address);
 
 			} catch (UnknownHostException e) {
 				logger.warning("Invalid Response Address: " + e.getMessage());
 				return null;
 			}
 
-			isa = new InetSocketAddress(ia, port);
+			isa = new InetSocketAddress(inetAddress, port);
 			logger.log(Level.FINE, "Found Address " + isa);
 			break;
 		}
@@ -165,7 +164,7 @@ public class Header {
 
 		int offset = LENGTH;
 
-		logger.finest("Searching for change request attribute");
+		logger.log(Level.FINE ,"Searching for change request attribute");
 
 		while (length > 0) {
 
@@ -174,18 +173,18 @@ public class Header {
 			int attributeLength = (int) (((request[offset + 2] << 8) & 0xff00)) | (request[offset + 3] & 0xff);
 
 			if (type != CHANGE_REQUEST) {
-				logger.fine("Skipping type " + type);
+				logger.log(Level.FINE, "Skipping type " + type);
 				offset += (TYPE_LENGTH_VALUE + attributeLength);
 				length -= (TYPE_LENGTH_VALUE + attributeLength);
 				continue;
 			}
 
 			if (attributeLength != CHANGE_REQUEST_LENGTH) {
-				logger.warning("Invalid Change Request Length " + attributeLength);
+				logger.log(Level.WARNING, "Invalid Change Request Length " + attributeLength);
 				return 0;
 			}
 			changeRequest = (int) request[offset + 7];
-			logger.finest("Found change request " + changeRequest);
+			logger.log(Level.FINE, "Found change request " + changeRequest);
 			break;
 		}
 		return changeRequest;

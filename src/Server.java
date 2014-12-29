@@ -240,23 +240,6 @@ public class Server {
 			logger.log(Level.FINE,"Thread " + (serverPort - 3478) + " out of running");
 		}
 	}
-	public void printResponse(byte[] request) {
-
-		StringBuilder sb = new StringBuilder();
-		sb.append("Message recieved:\n");
-
-
-		int messageType = (int) (((request[0] << 8) & 0xff00) | (request[1] & 0xff));
-		int length = request.length;
-
-		sb.append("Message type:" + messageType + "\n"
-				+ "Packet Lenght: " + length + "\n");
-
-
-		//System.out.println(sb.toString());
-
-
-	}
 
 	public void processRequest(DatagramSocket socket, DatagramPacket packet) {
 		logger.log(Level.FINE, "Processing request.");
@@ -272,7 +255,6 @@ public class Server {
 					+ " length " + length + " bytes " + " from " + isa);
 
 			byte[] response = buildResponse(isa, request, length);
-			printResponse(response);
 
 			/*
 			 * ChangeRequest - For alternating between servers in order to validate if the user
