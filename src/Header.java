@@ -6,7 +6,13 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-
+/**
+ * Class that implements the operations on the STUN message header.
+ * Everything that is represented with the keyword MUST is a requirement
+ * from RFC5389.
+ * @author Frans
+ *
+ */
 public class Header {
 
 	private static final Logger logger = Logger.getLogger(Header.class.getName());
@@ -40,20 +46,35 @@ public class Header {
 	public static final int BAD_REQUEST = 400;
 	public static final int GLOBAL_ERROR = 600;
 
+	/**
+	 * For debugging reasons.
+	 * Connect Handler to Logger in order to see Level.FINE messages
+	 */
 	public static void connectConsoleHandler() {
 		logger.addHandler(consoleHandler);
 	}
 
+	/**
+	 * For debugging reasons
+	 * Setting the Level on the Logger
+	 * @param newLevel
+	 */
 	public static void setLogLevel(Level newLevel) {
 		logger.setLevel(newLevel);
 	}
-
+	
+	/**
+	 * For debugging reasons 
+	 * Setting the Level on the ConsoleHandler
+	 * @param newLevel
+	 */
 	public static void setConsoleHandlerLevel(Level newLevel) {
 		consoleHandler.setLevel(newLevel);
 	}
+	
 	/**
 	 * A STUN Header MUST contain Type and Length of the request
-	 * @param request
+	 * @param request A STUN request
 	 */
 	public static void addTypeAndLengthTo(byte[] request) {
 		request[1] = (byte) BINDING_REQUEST;
@@ -63,7 +84,7 @@ public class Header {
 	/**
 	 * A STUN Header MUST contain a Magic cookie with the value of 0x2112A442
 	 * according to RFC3489.
-	 * @param request
+	 * @param request A STUN request
 	 */
 	public static void addMagicCookieTo(byte[] request) {
 		int magicCookie = 0x2112A442;
@@ -78,7 +99,7 @@ public class Header {
 	 * A transaction ID MUST be uniformly and randomly chosen 
 	 * and should be cryptographically random.
 	 * 
-	 * @param request
+	 * @param request A STUN request
 	 */
 	public static void addTransactionIDTo(byte[] request) {
 		SecureRandom rnd = new SecureRandom();
@@ -89,6 +110,13 @@ public class Header {
 			request[i+8] = rndBytes[0];
 		}
 	}
+	
+	/**
+	 * Takes a byte array and see if it has a STUN Magic Cookie at the
+	 * right place.
+	 * @param request A STUN request
+	 * @return true if magic cookie is there
+	 */
 	public static boolean compareMagicCookieIn(byte[] request) {
 
 		int magicCookie = 0x2112A442; //0x2112A442 = 10x554869826
@@ -100,6 +128,16 @@ public class Header {
 		return (magicCookie == extractedCookie) ? true : false;
 	}
 	
+	/**
+	 * Method that checks that the STUN attributes are there and then retrieves the
+	 * mapped address. It is used by Clients to discover their IP.
+	 * 
+	 * It checks if it's an IPv4 or IPv6 address, extracts the address and the port 
+	 * and returns it as an InetSocketAddress
+	 * @param request A STUN request
+	 * @param desiredType What we want. Mapped address usually.
+	 * @return Global IP address and Global Port number
+	 */
 	public static InetSocketAddress getAddress(byte[] request, int desiredType) {
 
 		InetSocketAddress isa = null;
@@ -156,6 +194,15 @@ public class Header {
 		return isa;
 	}
 
+	/**
+	 * Method that extracts the Change request from the STUN header.
+	 * ChangeRequests are for alternating between servers in order to validate if the user is 
+	 * behind a symmetric NAT. Have not implemented that part but it gets the change request
+	 * and tries to change port.
+	 * 
+	 * @param request A STUN request
+	 * @return The STUN value of a change request
+	 */
 	public static int getChangeRequest(byte[] request) {
 
 		int changeRequest = 0;
@@ -189,7 +236,4 @@ public class Header {
 		}
 		return changeRequest;
 	}
-	
-
-
 }

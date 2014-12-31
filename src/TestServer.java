@@ -23,6 +23,16 @@ public class TestServer {
 		Server.setLogLevel(Level.FINE);
 		Server.connectConsoleHandler();
 		Server.setConsoleHandlerLevel(Level.FINE);
+		UDPClient.setLogLevel(Level.FINE);
+		UDPClient.connectConsoleHandler();
+		UDPClient.setConsoleHandlerLevel(Level.FINE);
+		TCPClient.setLogLevel(Level.FINE);
+		TCPClient.connectConsoleHandler();
+		TCPClient.setConsoleHandlerLevel(Level.FINE);
+		Header.setLogLevel(Level.FINE);
+		Header.connectConsoleHandler();
+		Header.setConsoleHandlerLevel(Level.FINE);
+		
 		Server server = new Server();
 		try {
 			server.startServer();
@@ -76,7 +86,6 @@ public class TestServer {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
 	}
 	
 	public void testUDPClient(String ipAddress, int port, int clientPort) {

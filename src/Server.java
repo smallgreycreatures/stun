@@ -19,7 +19,12 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-
+/**
+ * A STUN server that accepts STUN binding requests on default port 3478 and 
+ * responds with a binding response
+ * @author Frans
+ *
+ */
 public class Server {
 	private static Logger logger = Logger.getLogger(Server.class.getName());
 	private static ConsoleHandler consoleHandler = new ConsoleHandler();
@@ -51,6 +56,13 @@ public class Server {
 		this.serverAddress = myAddress;
 	}
 
+	/**
+	 * This method starts the STUN server. It starts a thread pool with more than 4 threads
+	 * and creates nrOfThreads/2 TCP listeners and nrOfThreads/2 UDP listeners
+	 * It will by default use port 3478 + nrOfThreads ports and if specific port is 
+	 * requested port+nrOfThreads. 
+	 * @throws IOException for Sockets
+	 */
 	public void startServer() throws IOException {
 		this.nrOfThreads = nrOfThreads();
 		executorService = Executors.newFixedThreadPool(nrOfThreads);
@@ -85,14 +97,28 @@ public class Server {
 		}
 	}
 
+	/**
+	 * For debugging reasons.
+	 * Connect Handler to Logger in order to see Level.FINE messages
+	 */
 	public static void connectConsoleHandler() {
 		logger.addHandler(consoleHandler);
 	}
 
+	/**
+	 * For debugging reasons
+	 * Setting the Level on the Logger
+	 * @param newLevel
+	 */
 	public static void setLogLevel(Level newLevel) {
 		logger.setLevel(newLevel);
 	}
-
+	
+	/**
+	 * For debugging reasons 
+	 * Setting the Level on the ConsoleHandler
+	 * @param newLevel
+	 */
 	public static void setConsoleHandlerLevel(Level newLevel) {
 		consoleHandler.setLevel(newLevel);
 	}
@@ -138,7 +164,12 @@ public class Server {
 
 	class TCPListener implements Runnable {
 		private ServerSocket serverSocket;
-
+		
+		/**
+		 * Default constructor for TCP listener
+		 * @param serverPort
+		 * @throws IOException
+		 */
 		public TCPListener(int serverPort) throws IOException {
 			logger.log(Level.FINE, "Starting ServerSocket listener nr "+ ((serverPort - 3478)/2) + " on port " + serverPort);
 
@@ -167,7 +198,10 @@ public class Server {
 				throw new IOException("Can't create ServerSocket: " + e.getMessage());
 			}
 		}
-
+		
+		/**
+		 * Server run loops that listens after TCP messages. Exits when IOException is thrown
+		 */
 		public void run() {
 			boolean running = true;
 
@@ -192,6 +226,11 @@ public class Server {
 
 		private DatagramSocket socket;
 
+		/**
+		 * Default constructor for UDP listener
+		 * @param serverPort
+		 * @throws IOException
+		 */
 		public UDPListener(int serverPort) throws IOException {
 			logger.log(Level.FINE, "Starting UDP listener nr "+ ((serverPort - 3478)/2) + " on port " + serverPort);
 
@@ -219,7 +258,10 @@ public class Server {
 				throw new IOException("Can't create DatagramSocket: " + e.getMessage());
 			}
 		}
-
+		
+		/**
+		 * Server run loops that listens after TCP messages. Exits when IOException is thrown
+		 */
 		public void run() {
 			boolean running = true;
 			while (running) {
@@ -241,7 +283,7 @@ public class Server {
 		}
 	}
 
-	public void processRequest(DatagramSocket socket, DatagramPacket packet) {
+	private void processRequest(DatagramSocket socket, DatagramPacket packet) {
 		logger.log(Level.FINE, "Processing request.");
 		byte[] request = packet.getData();
 		int length = packet.getLength();
@@ -273,7 +315,7 @@ public class Server {
 		}
 	}
 
-	public void processRequest(Socket socket) throws IOException {
+	private void processRequest(Socket socket) throws IOException {
 		DataInputStream input = new DataInputStream(socket.getInputStream());
 		DataOutputStream output = new DataOutputStream(socket.getOutputStream());
 		
@@ -464,6 +506,12 @@ public class Server {
 		return response;
 	}
 
+	/**
+	 * This method shuts down the Server immediately. It closes all sockets
+	 * which makes it possible for the ThreadPool to close.
+	 * All requests that are processes during shutdown will be lost.
+	 * @throws IOException for Socket
+	 */
 	public void shutdown() throws IOException {
 		logger.log(Level.FINE, "Shutting down thread pool.");
 
@@ -479,7 +527,6 @@ public class Server {
 					tcpListeners[i].serverSocket.close();
 			}
 		}
-
 	}
 
 	public static void main(String[]args) {

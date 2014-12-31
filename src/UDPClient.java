@@ -8,15 +8,18 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-
+/**
+ * Class that implements a STUN Client that sends a STUN request through UDP.
+ * Implements Runnable and is ThreadSafe.
+ * @author Frans
+ *
+ */
 public class UDPClient implements Runnable {
 
 	private static final Logger logger = Logger.getLogger(UDPClient.class.getName());
 	private static ConsoleHandler consoleHandler = new ConsoleHandler();
 
 	private static final int TIMEOUT = 500;
-
-	private int retries = 5;
 
 	private InetSocketAddress serverAddress;
 	private DatagramSocket datagramSocket;
@@ -31,21 +34,40 @@ public class UDPClient implements Runnable {
 		this.datagramSocket = datagramSocket;
 		logger.log(Level.FINE, "Starting STUN UDP client on " + serverAddress);
 
-
 	}
 
+	/**
+	 * For debugging reasons.
+	 * Connect Handler to Logger in order to see Level.FINE messages
+	 */
 	public static void connectConsoleHandler() {
 		logger.addHandler(consoleHandler);
 	}
 
+	/**
+	 * For debugging reasons
+	 * Setting the Level on the Logger
+	 * @param newLevel
+	 */
 	public static void setLogLevel(Level newLevel) {
 		logger.setLevel(newLevel);
 	}
-
+	
+	/**
+	 * For debugging reasons 
+	 * Setting the Level on the ConsoleHandler
+	 * @param newLevel
+	 */
 	public static void setConsoleHandlerLevel(Level newLevel) {
 		consoleHandler.setLevel(newLevel);
 	}
 
+	/**
+	 * Method that put the asking thread to sleep until a response has been accepted
+	 * it then tries to deliver the Global IP address and Global port.
+	 * @return Global IP address and Port number
+	 * @throws IOException If mapped address == null the request failed and an IOException will be thrown.
+	 */
 	public InetSocketAddress getMappedAddress() throws IOException {
 
 		synchronized(this) {
@@ -53,7 +75,7 @@ public class UDPClient implements Runnable {
 				try {
 					wait();
 				} catch (InterruptedException e) {
-					throw new IOException("Failed to retrieve mapped address: Interrupted");
+					throw new IOException("Failed to retrieve mapped address: Interrupted.");
 				}
 
 			}
@@ -77,9 +99,15 @@ public class UDPClient implements Runnable {
 		notifyAll();
 	}
 
+	/**
+	 * Method that tries to send 5 requests with a increasing wait time after each in 
+	 * order to follow the guidelines in RFC 5389. If it succeeds it will notify threads 
+	 * waiting in getMappedAddress and then exit.
+	 */
 	public void run() {
 		int socketTimeout = TIMEOUT;
-
+		int retries = 5;
+		
 		logger.log(Level.FINE, "using STUN server " + serverAddress);
 
 		try {
